@@ -197,6 +197,7 @@ static void cluster_finish(void)
 }
 
 static struct hash *encap_hash = NULL;
+static struct hash *encap_tlv_hash = NULL;
 #ifdef ENABLE_BGP_VNC
 static struct hash *vnc_hash = NULL;
 #endif
@@ -214,10 +215,10 @@ struct bgp_attr_encap_subtlv *encap_tlv_dup(struct bgp_attr_encap_subtlv *orig)
 	for (p = orig, tail = new = NULL; p; p = p->next) {
 		int size = sizeof(struct bgp_attr_encap_subtlv) + p->length;
 		if (tail) {
-			tail->next = XCALLOC(MTYPE_ENCAP_TLV, size);
+			tail->next = XCALLOC(MTYPE_ENCAP_SUBTLV, size);
 			tail = tail->next;
 		} else {
-			tail = new = XCALLOC(MTYPE_ENCAP_TLV, size);
+			tail = new = XCALLOC(MTYPE_ENCAP_SUBTLV, size);
 		}
 		assert(tail);
 		memcpy(tail, p, size);
@@ -233,7 +234,7 @@ static void encap_free(struct bgp_attr_encap_subtlv *p)
 	while (p) {
 		next = p->next;
 		p->next = NULL;
-		XFREE(MTYPE_ENCAP_TLV, p);
+		XFREE(MTYPE_ENCAP_SUBTLV, p);
 		p = next;
 	}
 }
@@ -242,11 +243,17 @@ void bgp_attr_flush_encap(struct attr *attr)
 {
 	if (!attr)
 		return;
-
-	if (attr->encap_subtlvs) {
-		encap_free(attr->encap_subtlvs);
-		attr->encap_subtlvs = NULL;
+	struct bgp_attr_encap_tlv *tlv, *temp_tlv;
+	for(tlv = attr->encap_tlvs; tlv;) {
+		struct bgp_attr_encap_subtlv *p = tlv->encap_subtlvs;
+		encap_free(p);
+		tlv->encap_subtlvs = NULL;
+		// need to free memory
+		temp_tlv = tlv;
+		tlv = tlv->next;
+		XFREE(MTYPE_ENCAP_TLV, prev_tlv);
 	}
+	attr->encap_tlvs = NULL;
 #ifdef ENABLE_BGP_VNC
 	struct bgp_attr_encap_subtlv *vnc_subtlvs =
 		bgp_attr_get_vnc_subtlvs(attr);
@@ -304,6 +311,41 @@ static bool encap_same(const struct bgp_attr_encap_subtlv *h1,
 	return true;
 }
 
+// compare encap tlv chains
+static bool encap_tlv_same(const struct bgp_attr_encap_tlv *h1,
+		       const struct bgp_attr_encap_tlv *h2)
+{
+	const struct bgp_attr_encap_tlv *p;
+	const struct bgp_attr_encap_tlv *q;
+
+	if (h1 == h2)
+		return true;
+	if (h1 == NULL || h2 == NULL)
+		return false;
+
+	for (p = h1; p; p = p->next) {
+		for (q = h2; q; q = q->next) {
+			if ((p->tunnel_type == q->tunnel_type) && encap_same(p->encap_subtlvs, q->encap_subtlvs)) {
+				break;
+			}
+		}
+		if (!q)
+			return false;
+	}
+
+	for (p = h2; p; p = p->next) {
+		for (q = h1; q; q = q->next) {
+			if ((p->tunnel_type == q->tunnel_type) && encap_same(p->encap_subtlvs, q->encap_subtlvs)) {
+				break;
+			}
+		}
+		if (!q)
+			return false;
+	}
+
+	return true;
+}
+
 static void *encap_hash_alloc(void *p)
 {
 	/* Encap structure is already allocated.  */
@@ -335,6 +377,11 @@ encap_intern(struct bgp_attr_encap_subtlv *encap, encap_subtlv_type type)
 	return find;
 }
 
+static struct bgp_attr_encap_tlv *encap_tlv_intern (struct bgp_atrr_encap_tlv *encap) 
+{
+	struct bgp_attr_encap_tlv* find;
+	struct hash *hash = encap_tlv_hash;
+}
 static void encap_unintern(struct bgp_attr_encap_subtlv **encapp,
 			   encap_subtlv_type type)
 {
@@ -966,8 +1013,9 @@ unsigned int attrhash_key_make(const void *p)
 		MIX(cluster_hash_key_make(bgp_attr_get_cluster(attr)));
 	if (bgp_attr_get_transit(attr))
 		MIX(transit_hash_key_make(bgp_attr_get_transit(attr)));
-	if (attr->encap_subtlvs)
-		MIX(encap_hash_key_make(attr->encap_subtlvs));
+	for(struct bgp_attr_encap_tlv *p = attr->encap_tlvs;p; p = p->next) {
+		MIX(encap_hash_key_make(p->encap_subtlvs));
+	}
 	if (attr->srv6_l3vpn)
 		MIX(srv6_l3vpn_hash_key_make(attr->srv6_l3vpn));
 	if (bgp_attr_get_evpn_overlay(attr))
@@ -1017,8 +1065,8 @@ bool attrhash_cmp(const void *p1, const void *p2)
 		    bgp_attr_get_transit(attr1) == bgp_attr_get_transit(attr2) &&
 		    bgp_attr_get_aigp_metric(attr1) == bgp_attr_get_aigp_metric(attr2) &&
 		    attr1->rmap_table_id == attr2->rmap_table_id &&
-		    (attr1->encap_tunneltype == attr2->encap_tunneltype) &&
-		    encap_same(attr1->encap_subtlvs, attr2->encap_subtlvs)
+		    // (attr1->encap_tunneltype == attr2->encap_tunneltype) &&
+		    encap_tlv_same(attr1->encap_tlvs, attr2->encap_tlvs)
 #ifdef ENABLE_BGP_VNC
 		    && encap_same(bgp_attr_get_vnc_subtlvs(attr1), bgp_attr_get_vnc_subtlvs(attr2))
 #endif
@@ -1154,8 +1202,8 @@ static void *bgp_attr_hash_alloc(void *p)
 
 	attr = XMALLOC(MTYPE_ATTR, sizeof(struct attr));
 	*attr = *val;
-	if (val->encap_subtlvs) {
-		val->encap_subtlvs = NULL;
+	if (val->encap_tlvs) {
+		val->encap_tlvs = NULL;
 	}
 #ifdef ENABLE_BGP_VNC
 	struct bgp_attr_encap_subtlv *vnc_subtlvs =
@@ -3031,7 +3079,7 @@ static int bgp_attr_encap(struct bgp_attr_parser_args *args)
 
 		/* alloc and copy sub-tlv */
 		/* TBD make sure these are freed when attributes are released */
-		tlv = XCALLOC(MTYPE_ENCAP_TLV,
+		tlv = XCALLOC(MTYPE_ENCAP_SUBTLV,
 			      sizeof(struct bgp_attr_encap_subtlv) + sublength);
 		tlv->type = subtype;
 		tlv->length = sublength;

@@ -33,7 +33,7 @@ static struct bgp_attr_encap_subtlv *subtlv_encode_encap_l2tpv3_over_ip(
 	assert(st->cookie_length <= sizeof(st->cookie));
 	assert(total <= 0xff);
 
-	new = XCALLOC(MTYPE_ENCAP_TLV,
+	new = XCALLOC(MTYPE_ENCAP_SUBTLV,
 		      sizeof(struct bgp_attr_encap_subtlv) + total);
 	assert(new);
 	new->type = BGP_ENCAP_SUBTLV_TYPE_ENCAPSULATION;
@@ -58,7 +58,7 @@ subtlv_encode_encap_gre(struct bgp_tea_subtlv_encap_gre_key *st)
 
 	assert(total <= 0xff);
 
-	new = XCALLOC(MTYPE_ENCAP_TLV,
+	new = XCALLOC(MTYPE_ENCAP_SUBTLV,
 		      sizeof(struct bgp_attr_encap_subtlv) + total);
 	assert(new);
 	new->type = BGP_ENCAP_SUBTLV_TYPE_ENCAPSULATION;
@@ -81,7 +81,7 @@ subtlv_encode_encap_pbb(struct bgp_tea_subtlv_encap_pbb *st)
 
 	assert(total <= 0xff);
 
-	new = XCALLOC(MTYPE_ENCAP_TLV,
+	new = XCALLOC(MTYPE_ENCAP_SUBTLV,
 		      sizeof(struct bgp_attr_encap_subtlv) + total);
 	assert(new);
 	new->type = BGP_ENCAP_SUBTLV_TYPE_ENCAPSULATION;
@@ -114,7 +114,7 @@ subtlv_encode_proto_type(struct bgp_tea_subtlv_proto_type *st)
 
 	assert(total <= 0xff);
 
-	new = XCALLOC(MTYPE_ENCAP_TLV,
+	new = XCALLOC(MTYPE_ENCAP_SUBTLV,
 		      sizeof(struct bgp_attr_encap_subtlv) + total);
 	assert(new);
 	new->type = BGP_ENCAP_SUBTLV_TYPE_PROTO_TYPE;
@@ -136,7 +136,7 @@ subtlv_encode_color(struct bgp_tea_subtlv_color *st)
 
 	assert(total <= 0xff);
 
-	new = XCALLOC(MTYPE_ENCAP_TLV,
+	new = XCALLOC(MTYPE_ENCAP_SUBTLV,
 		      sizeof(struct bgp_attr_encap_subtlv) + total);
 	assert(new);
 	new->type = BGP_ENCAP_SUBTLV_TYPE_COLOR;
@@ -168,7 +168,7 @@ subtlv_encode_ipsec_ta(struct bgp_tea_subtlv_ipsec_ta *st)
 	assert(st->authenticator_length <= sizeof(st->value));
 	assert(total <= 0xff);
 
-	new = XCALLOC(MTYPE_ENCAP_TLV,
+	new = XCALLOC(MTYPE_ENCAP_SUBTLV,
 		      sizeof(struct bgp_attr_encap_subtlv) + total);
 	assert(new);
 	new->type = BGP_ENCAP_SUBTLV_TYPE_IPSEC_TA;
@@ -192,7 +192,7 @@ subtlv_encode_remote_endpoint(struct bgp_tea_subtlv_remote_endpoint *st)
 
 	assert(total <= 0xff);
 
-	new = XCALLOC(MTYPE_ENCAP_TLV,
+	new = XCALLOC(MTYPE_ENCAP_SUBTLV,
 		      sizeof(struct bgp_attr_encap_subtlv) + total);
 	assert(new);
 	new->type = BGP_ENCAP_SUBTLV_TYPE_REMOTE_ENDPOINT;
@@ -388,8 +388,8 @@ void bgp_encap_type_vxlan_to_tlv(
 
 	if (bet == NULL || !bet->vnid)
 		return;
-	XFREE(MTYPE_ENCAP_TLV, attr->encap_subtlvs);
-	tlv = XCALLOC(MTYPE_ENCAP_TLV,
+	XFREE(MTYPE_ENCAP_SUBTLV, attr->encap_subtlvs);
+	tlv = XCALLOC(MTYPE_ENCAP_SUBTLV,
 		      sizeof(struct bgp_attr_encap_subtlv) + 12);
 	tlv->type = 1; /* encapsulation type */
 	tlv->length = 12;

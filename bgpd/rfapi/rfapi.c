@@ -697,7 +697,7 @@ void add_vnc_route(struct rfapi_descriptor *rfd, /* cookie, VPN UN addr, peer */
 	if (lifetime && *lifetime != RFAPI_INFINITE_LIFETIME) {
 		uint32_t lt;
 
-		encaptlv = XCALLOC(MTYPE_ENCAP_TLV,
+		encaptlv = XCALLOC(MTYPE_ENCAP_SUBTLV,
 				   sizeof(struct bgp_attr_encap_subtlv) + 4);
 		encaptlv->type =
 			BGP_VNC_SUBTLV_TYPE_LIFETIME; /* prefix lifetime */
@@ -740,7 +740,7 @@ void add_vnc_route(struct rfapi_descriptor *rfd, /* cookie, VPN UN addr, peer */
 				 * Construct subtlv
 				 */
 				encaptlv = XCALLOC(
-					MTYPE_ENCAP_TLV,
+					MTYPE_ENCAP_SUBTLV,
 					sizeof(struct bgp_attr_encap_subtlv) + 2
 						+ hop->length);
 				encaptlv->type =

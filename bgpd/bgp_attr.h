@@ -79,6 +79,12 @@ struct bgp_attr_encap_subtlv {
 	uint16_t length;
 	uint8_t value[0]; /* will be extended */
 };
+struct bgp_attr_encap_tlv {
+	struct bgp_attr_encap_tlv *next;
+	struct bgp_attr_encap_subtlv *encap_subtlvs;
+	uint16_t tunnel_type;
+	unsigned long refcnt;
+}
 
 #ifdef ENABLE_BGP_VNC
 /*
@@ -272,7 +278,8 @@ struct attr {
 	/* SRv6 L3VPN SID */
 	struct bgp_attr_srv6_l3vpn *srv6_l3vpn;
 
-	struct bgp_attr_encap_subtlv *encap_subtlvs; /* rfc5512 */
+	// struct bgp_attr_encap_subtlv *encap_subtlvs; /* rfc5512 */
+	struct bgp_attr_encap_tlv *encap_tlvs;
 
 #ifdef ENABLE_BGP_VNC
 	struct bgp_attr_encap_subtlv *vnc_subtlvs; /* VNC-specific */
@@ -293,7 +300,7 @@ struct attr {
 	/* EVPN local router-mac */
 	struct ethaddr rmac;
 
-	uint8_t encap_tunneltype;
+	// uint8_t encap_tunneltype;
 
 	/* rmap set table */
 	uint32_t rmap_table_id;
