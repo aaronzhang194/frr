@@ -206,7 +206,7 @@ static struct hash *srv6_vpn_hash;
 static struct hash *evpn_overlay_hash;
 static struct hash *bgp_nhc_hash;
 
-struct bgp_attr_encap_subtlv *encap_tlv_dup(struct bgp_attr_encap_subtlv *orig)
+struct bgp_attr_encap_subtlv *encap_subtlv_dup(struct bgp_attr_encap_subtlv *orig)
 {
 	struct bgp_attr_encap_subtlv *new;
 	struct bgp_attr_encap_subtlv *tail;
@@ -227,6 +227,33 @@ struct bgp_attr_encap_subtlv *encap_tlv_dup(struct bgp_attr_encap_subtlv *orig)
 
 	return new;
 }
+// check rfapi.c
+struct bgp_attr_encap_tlv *encap_tlv_dup(struct bgp_attr_encap_tlv *orig)
+{
+    struct bgp_attr_encap_tlv *new = NULL;
+    struct bgp_attr_encap_tlv *tail = NULL;
+    struct bgp_attr_encap_tlv *p;
+
+    for (p = orig; p; p = p->next) {
+        struct bgp_attr_encap_tlv *copy = XCALLOC(MTYPE_ENCAP_TLV, sizeof(struct bgp_attr_encap_tlv));
+        assert(copy);
+
+        copy->tunnel_type = p->tunnel_type;
+        copy->refcnt = p->refcnt;
+        copy->encap_subtlvs = encap_subtlv_dup(p->encap_subtlvs);
+        copy->next = NULL;
+
+        if (tail) {
+            tail->next = copy;
+        } else {
+            new = copy;
+        }
+
+        tail = copy;
+    }
+
+    return new;
+}
 
 static void encap_free(struct bgp_attr_encap_subtlv *p)
 {
@@ -239,20 +266,25 @@ static void encap_free(struct bgp_attr_encap_subtlv *p)
 	}
 }
 
+static void encap_tlv_free(struct bgp_attr_encap_tlv *p)
+{
+	struct bgp_attr_encap_tlv *next;
+	while (p) {
+		next = p-> next;
+		p->next = NULL;
+		encap_free(q->encap_subtlvs);
+		XFREE(MTYPE_ENCAP_TLV, p);
+		p = next;
+	}
+}
+
 void bgp_attr_flush_encap(struct attr *attr)
 {
 	if (!attr)
 		return;
-	struct bgp_attr_encap_tlv *tlv, *temp_tlv;
-	for(tlv = attr->encap_tlvs; tlv;) {
-		struct bgp_attr_encap_subtlv *p = tlv->encap_subtlvs;
-		encap_free(p);
-		tlv->encap_subtlvs = NULL;
-		// need to free memory
-		temp_tlv = tlv;
-		tlv = tlv->next;
-		XFREE(MTYPE_ENCAP_TLV, prev_tlv);
-	}
+	
+	encap_tlv_free(attr->encap_tlvs);
+
 	attr->encap_tlvs = NULL;
 #ifdef ENABLE_BGP_VNC
 	struct bgp_attr_encap_subtlv *vnc_subtlvs =
@@ -377,11 +409,20 @@ encap_intern(struct bgp_attr_encap_subtlv *encap, encap_subtlv_type type)
 	return find;
 }
 
-static struct bgp_attr_encap_tlv *encap_tlv_intern (struct bgp_atrr_encap_tlv *encap) 
+static struct bgp_attr_encap_tlv *
+encap_tlv_intern(struct bgp_attr_encap_tlv *encap)
 {
-	struct bgp_attr_encap_tlv* find;
-	struct hash *hash = encap_tlv_hash;
+	struct bgp_attr_encap_tlv *find;
+	struct hash *tlv_hash = encap_tlv_hash;
+
+	find = hash_get(tlv_hash, encap, encap_hash_alloc);
+	if (find != encap)
+		encap_tlv_free(encap);
+	find->refcnt++;
+
+	return find;
 }
+
 static void encap_unintern(struct bgp_attr_encap_subtlv **encapp,
 			   encap_subtlv_type type)
 {
@@ -405,19 +446,46 @@ static void encap_unintern(struct bgp_attr_encap_subtlv **encapp,
 	}
 }
 
+static void encap_tlv_unintern(struct bgp_attr_encap_tlv **encapp)
+{
+	struct bgp_attr_encap_tlv *encap = *encapp;
+
+	if (!*encapp)
+		return;
+
+	if (encap->refcnt)
+		encap->refcnt--;
+
+	if (encap->refcnt == 0) {
+		struct hash *hash = encap_tlv_hash;
+		hash_release(hash, encap);
+		encap_tlv_free(encap);
+		*encapp = NULL;
+	}
+}
+
 static unsigned int encap_hash_key_make(const void *p)
 {
 	const struct bgp_attr_encap_subtlv *encap = p;
 
 	return jhash(encap->value, encap->length, 0);
 }
-
+static unsigned int encap_tlv_hash_key_make(const void *p) 
+{
+	u_int32_t key = 0;
+	for (bgp_attr_encap_subtlv *q = p->encap_subtlvs; q; q = q->next) {
+		key = jhash_1word(encap_hash_key_make(q),key);
+	}
+	return key;
+}
 static bool encap_hash_cmp(const void *p1, const void *p2)
 {
 	return encap_same((const struct bgp_attr_encap_subtlv *)p1,
 			  (const struct bgp_attr_encap_subtlv *)p2);
 }
-
+static bool encap_tlv_hash_cmp(const void *p1, const void *p2) {
+	return encap_tlv_same(((const struct bgp_attr_encap_tlv *)p1, (const struct bgp_attr_encap_tlv *)p2));
+}
 static void encap_init(void)
 {
 	encap_hash = hash_create(encap_hash_key_make, encap_hash_cmp,
@@ -428,6 +496,12 @@ static void encap_init(void)
 #endif
 }
 
+static void encap_tlv_init(void)
+{
+	encap_hash = hash_create(encap_tlv_hash_key_make, encap_tlv_hash_cmp,
+				 "BGP tlv Encap Hash");
+}
+
 static void encap_finish(void)
 {
 	hash_clean_and_free(&encap_hash, (void (*)(void *))encap_free);
@@ -436,6 +510,13 @@ static void encap_finish(void)
 #endif
 }
 
+static void encap_tlv_finish(void)
+{
+	hash_clean_and_free(&encap_tlv_hash, (void (*)(void *))encap_free);
+#ifdef ENABLE_BGP_VNC
+	hash_clean_and_free(&vnc_hash, (void (*)(void *))encap_free);
+#endif
+}
 static bool overlay_index_same(const struct attr *a1, const struct attr *a2)
 {
 	if (!a1 && a2)
@@ -1014,7 +1095,7 @@ unsigned int attrhash_key_make(const void *p)
 	if (bgp_attr_get_transit(attr))
 		MIX(transit_hash_key_make(bgp_attr_get_transit(attr)));
 	for(struct bgp_attr_encap_tlv *p = attr->encap_tlvs;p; p = p->next) {
-		MIX(encap_hash_key_make(p->encap_subtlvs));
+		MIX(encap_tlv_hash_key_make(p));
 	}
 	if (attr->srv6_l3vpn)
 		MIX(srv6_l3vpn_hash_key_make(attr->srv6_l3vpn));

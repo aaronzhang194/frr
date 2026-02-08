@@ -84,7 +84,7 @@ struct bgp_attr_encap_tlv {
 	struct bgp_attr_encap_subtlv *encap_subtlvs;
 	uint16_t tunnel_type;
 	unsigned long refcnt;
-}
+};
 
 #ifdef ENABLE_BGP_VNC
 /*
@@ -443,7 +443,7 @@ extern enum bgp_attr_parse_ret
 bgp_attr_prefix_sid(struct bgp_attr_parser_args *args);
 
 extern struct bgp_attr_encap_subtlv *
-encap_tlv_dup(struct bgp_attr_encap_subtlv *orig);
+encap_subtlv_dup(struct bgp_attr_encap_subtlv *orig);
 
 extern void bgp_attr_flush_encap(struct attr *attr);
 
