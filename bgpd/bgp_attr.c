@@ -227,7 +227,7 @@ struct bgp_attr_encap_subtlv *encap_subtlv_dup(struct bgp_attr_encap_subtlv *ori
 
 	return new;
 }
-// check rfapi.c
+
 struct bgp_attr_encap_tlv *encap_tlv_dup(struct bgp_attr_encap_tlv *orig)
 {
     struct bgp_attr_encap_tlv *new = NULL;
@@ -1366,12 +1366,11 @@ struct attr *bgp_attr_intern(struct attr *attr)
 		else
 			transit->refcnt++;
 	}
-	if (attr->encap_subtlvs) {
-		if (!attr->encap_subtlvs->refcnt)
-			attr->encap_subtlvs = encap_intern(attr->encap_subtlvs,
-							   ENCAP_SUBTLV_TYPE);
+	if (attr->encap_tlvs) {
+		if (!attr->encap_tlvs->refcnt)
+			attr->encap_tlvs = encap_tlv_intern(attr->encap_tlvs);
 		else
-			attr->encap_subtlvs->refcnt++;
+			attr->encap_tlvs->refcnt++;
 	}
 
 	bre = bgp_attr_get_evpn_overlay(attr);
@@ -1615,7 +1614,7 @@ void bgp_attr_unintern_sub(struct attr *attr)
 	bgp_nhc_unintern(&nhc);
 	bgp_attr_set_nhc(attr, NULL);
 
-	encap_unintern(&attr->encap_subtlvs, ENCAP_SUBTLV_TYPE);
+	encap_tlv_unintern(&attr->encap_tlvs);
 
 #ifdef ENABLE_BGP_VNC
 	struct bgp_attr_encap_subtlv *vnc_subtlvs =
@@ -1702,9 +1701,9 @@ void bgp_attr_flush(struct attr *attr)
 		transit_free(transit);
 		bgp_attr_set_transit(attr, NULL);
 	}
-	if (attr->encap_subtlvs && !attr->encap_subtlvs->refcnt) {
-		encap_free(attr->encap_subtlvs);
-		attr->encap_subtlvs = NULL;
+	if (attr->encap_tlvs && !attr->encap_tlvs->refcnt) {
+		encap_tlv_free(attr->encap_tlvs);
+		attr->encap_tlvs = NULL;
 	}
 	if (attr->srv6_l3vpn && !attr->srv6_l3vpn->refcnt) {
 		srv6_l3vpn_free(attr->srv6_l3vpn);
@@ -3079,7 +3078,7 @@ ipv6_ext_community_ignore:
 }
 
 /* Parse Tunnel Encap attribute in an UPDATE */
-static int bgp_attr_encap(struct bgp_attr_parser_args *args)
+static int bgp_attr_encap(struct bgp_attr_parser_args *args, struct bgp_attr_encap_tlv *tunnel)
 {
 	uint16_t tunneltype = 0;
 	struct peer *const peer = args->peer;
@@ -3119,7 +3118,10 @@ static int bgp_attr_encap(struct bgp_attr_parser_args *args)
 				  __func__, tlv_length, length);
 		}
 	}
-
+	struct bgp_attr_encap_subtlv *stlv_last;
+	for (stlv_last = tunnel->encap_subtlvs;
+			stlv_last && stlv_last->next;
+			stlv_last = stlv_last->next);
 	while (STREAM_READABLE(BGP_INPUT(peer)) >= 4) {
 		uint16_t subtype = 0;
 		uint16_t sublength = 0;
@@ -3169,16 +3171,13 @@ static int bgp_attr_encap(struct bgp_attr_parser_args *args)
 
 		/* attach tlv to encap chain */
 		if (BGP_ATTR_ENCAP == type) {
-			struct bgp_attr_encap_subtlv *stlv_last;
-			for (stlv_last = attr->encap_subtlvs;
-			     stlv_last && stlv_last->next;
-			     stlv_last = stlv_last->next)
-				;
 			if (stlv_last) {
 				stlv_last->next = tlv;
 			} else {
-				attr->encap_subtlvs = tlv;
+				tunnel->encap_subtlvs = tlv;
+				tunnel->tunnel_type = tunneltype;
 			}
+			stlv_last = tlv;
 #ifdef ENABLE_BGP_VNC
 		} else {
 			struct bgp_attr_encap_subtlv *stlv_last;
@@ -3197,9 +3196,7 @@ static int bgp_attr_encap(struct bgp_attr_parser_args *args)
 		}
 	}
 
-	if (BGP_ATTR_ENCAP == type) {
-		attr->encap_tunneltype = tunneltype;
-	}
+	
 
 	if (length) {
 		/* spurious leftover data */
@@ -4367,7 +4364,8 @@ enum bgp_attr_parse_ret bgp_attr_parse(struct peer *peer, struct attr *attr,
 		case BGP_ATTR_VNC:
 #endif
 		case BGP_ATTR_ENCAP:
-			ret = bgp_attr_encap(&attr_args);
+			// think
+			ret = bgp_attr_encap(&attr_args, NULL);
 			break;
 		case BGP_ATTR_PREFIX_SID:
 			ret = bgp_attr_prefix_sid(&attr_args);
@@ -4538,6 +4536,7 @@ done:
 		/* Finally intern unknown attribute. */
 		if (transit)
 			bgp_attr_set_transit(attr, transit_intern(transit));
+		// think about it
 		if (attr->encap_subtlvs)
 			attr->encap_subtlvs = encap_intern(attr->encap_subtlvs,
 							   ENCAP_SUBTLV_TYPE);
