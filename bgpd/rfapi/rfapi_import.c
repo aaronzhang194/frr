@@ -278,7 +278,6 @@ int rfapiGetL2o(struct attr *attr, struct rfapi_l2address_option *l2o)
 {
 	if (attr) {
 		struct bgp_attr_encap_subtlv *pEncap;
-
 		for (pEncap = bgp_attr_get_vnc_subtlvs(attr); pEncap;
 		     pEncap = pEncap->next) {
 

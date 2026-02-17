@@ -282,7 +282,7 @@ struct attr {
 	struct bgp_attr_encap_tlv *encap_tlvs;
 
 #ifdef ENABLE_BGP_VNC
-	struct bgp_attr_encap_subtlv *vnc_subtlvs; /* VNC-specific */
+	struct bgp_attr_encap_tlv *vnc_tlvs; /* VNC-specific */
 #endif
 	/* EVPN */
 	struct bgp_route_evpn *evpn_overlay;
@@ -674,22 +674,32 @@ static inline void bgp_attr_set_evpn_overlay(struct attr *attr,
 	attr->evpn_overlay = bre;
 }
 
-static inline struct bgp_attr_encap_subtlv *
+static inline struct bgp_attr_encap_tlv *
+bgp_attr_get_vnc_tlvs(const struct attr *attr)
+{
+#ifdef ENABLE_BGP_VNC
+	return attr->vnc_tlvs;
+#else
+	return NULL;
+#endif
+}
+static inline struct bgp_attr_encap_tlv *
 bgp_attr_get_vnc_subtlvs(const struct attr *attr)
 {
 #ifdef ENABLE_BGP_VNC
-	return attr->vnc_subtlvs;
+	if (attr->vnc_tlvs == NULL) return NULL;
+	return attr->vnc_tlvs->encap_subtlvs;
 #else
 	return NULL;
 #endif
 }
 
 static inline void
-bgp_attr_set_vnc_subtlvs(struct attr *attr,
-			 struct bgp_attr_encap_subtlv *vnc_subtlvs)
+bgp_attr_set_vnc_tlvs(struct attr *attr,
+			 struct bgp_attr_encap_tlv *vnc_tlvs)
 {
 #ifdef ENABLE_BGP_VNC
-	attr->vnc_subtlvs = vnc_subtlvs;
+	attr->vnc_tlvs = vnc_tlvs;
 #endif
 }
 

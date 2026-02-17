@@ -704,6 +704,7 @@ void add_vnc_route(struct rfapi_descriptor *rfd, /* cookie, VPN UN addr, peer */
 		encaptlv->length = 4;
 		lt = htonl(*lifetime);
 		memcpy(encaptlv->value, &lt, 4);
+		// fix
 		bgp_attr_set_vnc_subtlvs(&attr, encaptlv);
 		vnc_zlog_debug_verbose(
 			"%s: set Encap Attr Prefix Lifetime to %d", __func__,
