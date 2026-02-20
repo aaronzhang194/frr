@@ -1130,7 +1130,7 @@ route_match_vni(void *rule, const struct prefix *prefix, void *object)
 	 * For any other tunnel type, return noop to ignore
 	 * this check.
 	 */
-	if (path->attr->encap_tunneltype != BGP_ENCAP_TYPE_VXLAN)
+	if (path->attr->encap_tlvs->tunnel_type != BGP_ENCAP_TYPE_VXLAN)
 		return RMAP_NOOP;
 
 	/*

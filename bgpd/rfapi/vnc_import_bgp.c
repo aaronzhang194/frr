@@ -455,12 +455,12 @@ static void vnc_import_bgp_add_route_mode_resolve_nve_one_bi(
 	}
 
 	encaptlvs = bgp_attr_get_vnc_subtlvs(bpi->attr);
-	if (bpi->attr->encap_tunneltype != BGP_ENCAP_TYPE_RESERVED
-	    && bpi->attr->encap_tunneltype != BGP_ENCAP_TYPE_MPLS) {
+	if (bpi->attr->encap_tlvs->tunnel_type != BGP_ENCAP_TYPE_RESERVED
+	    && bpi->attr->encap_tlvs->tunnel_type != BGP_ENCAP_TYPE_MPLS) {
 		opt = &optary[cur_opt++];
 		memset(opt, 0, sizeof(struct rfapi_un_option));
 		opt->type = RFAPI_UN_OPTION_TYPE_TUNNELTYPE;
-		opt->v.tunnel.type = bpi->attr->encap_tunneltype;
+		opt->v.tunnel.type = bpi->attr->encap_tlvs->tunnel_type;
 		/* TBD parse bpi->attr->extra->encap_subtlvs */
 	}
 

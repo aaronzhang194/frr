@@ -83,6 +83,7 @@ struct bgp_attr_encap_tlv {
 	struct bgp_attr_encap_tlv *next;
 	struct bgp_attr_encap_subtlv *encap_subtlvs;
 	uint16_t tunnel_type;
+	uint16_t length;
 	unsigned long refcnt;
 };
 
@@ -445,6 +446,8 @@ bgp_attr_prefix_sid(struct bgp_attr_parser_args *args);
 extern struct bgp_attr_encap_subtlv *
 encap_subtlv_dup(struct bgp_attr_encap_subtlv *orig);
 
+extern struct bgp_attr_encap_tlv *encap_tlv_dup(struct bgp_attr_encap_tlv *orig);
+
 extern void bgp_attr_flush_encap(struct attr *attr);
 
 extern void bgp_attr_extcom_tunnel_type(struct attr *attr,
@@ -683,7 +686,7 @@ bgp_attr_get_vnc_tlvs(const struct attr *attr)
 	return NULL;
 #endif
 }
-static inline struct bgp_attr_encap_tlv *
+static inline struct bgp_attr_encap_subtlv *
 bgp_attr_get_vnc_subtlvs(const struct attr *attr)
 {
 #ifdef ENABLE_BGP_VNC

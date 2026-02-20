@@ -372,7 +372,7 @@ int rfapiGetVncTunnelUnAddr(struct attr *attr, struct prefix *p)
 		return ENOENT;
 	}
 	if (attr) {
-		for (pEncap = attr->encap_subtlvs; pEncap;
+		for (pEncap = attr->encap_tlvs->encap_subtlvs; pEncap;
 		     pEncap = pEncap->next) {
 
 			if (pEncap->type
@@ -1360,7 +1360,7 @@ rfapiRouteInfo2NextHopEntry(struct rfapi_ip_prefix *rprefix,
 		}
 	}
 
-	for (pEncap = bpi->attr->encap_subtlvs; pEncap; pEncap = pEncap->next) {
+	for (pEncap = bpi->attr->encap_tlvs->encap_subtlvs; pEncap; pEncap = pEncap->next) {
 		switch (pEncap->type) {
 		case BGP_ENCAP_SUBTLV_TYPE_REMOTE_ENDPOINT:
 			/*

@@ -271,9 +271,9 @@ static void encap_tlv_free(struct bgp_attr_encap_tlv *p)
 {
 	struct bgp_attr_encap_tlv *next;
 	while (p) {
-		next = p-> next;
+		next = p->next;
 		p->next = NULL;
-		encap_free(q->encap_subtlvs);
+		encap_free(p->encap_subtlvs);
 		XFREE(MTYPE_ENCAP_TLV, p);
 		p = next;
 	}
@@ -481,7 +481,8 @@ static unsigned int encap_hash_key_make(const void *p)
 static unsigned int encap_tlv_hash_key_make(const void *p) 
 {
 	u_int32_t key = 0;
-	for (bgp_attr_encap_subtlv *q = p->encap_subtlvs; q; q = q->next) {
+	const struct bgp_attr_encap_tlv *encap = p;
+	for (struct bgp_attr_encap_subtlv *q = encap->encap_subtlvs; q; q = q->next) {
 		key = jhash_1word(encap_hash_key_make(q),key);
 	}
 	return key;
@@ -492,7 +493,7 @@ static bool encap_hash_cmp(const void *p1, const void *p2)
 			  (const struct bgp_attr_encap_subtlv *)p2);
 }
 static bool encap_tlv_hash_cmp(const void *p1, const void *p2) {
-	return encap_tlv_same(((const struct bgp_attr_encap_tlv *)p1, (const struct bgp_attr_encap_tlv *)p2));
+	return encap_tlv_same((const struct bgp_attr_encap_tlv *)p1, (const struct bgp_attr_encap_tlv *)p2);
 }
 static void encap_init(void)
 {
@@ -1106,8 +1107,8 @@ unsigned int attrhash_key_make(const void *p)
 		MIX(cluster_hash_key_make(bgp_attr_get_cluster(attr)));
 	if (bgp_attr_get_transit(attr))
 		MIX(transit_hash_key_make(bgp_attr_get_transit(attr)));
-	for(struct bgp_attr_encap_tlv *p = attr->encap_tlvs;p; p = p->next) {
-		MIX(encap_tlv_hash_key_make(p));
+	for(struct bgp_attr_encap_tlv *q = attr->encap_tlvs;q; q = q->next) {
+		MIX(encap_tlv_hash_key_make(q));
 	}
 	if (attr->srv6_l3vpn)
 		MIX(srv6_l3vpn_hash_key_make(attr->srv6_l3vpn));
@@ -1118,8 +1119,8 @@ unsigned int attrhash_key_make(const void *p)
 #ifdef ENABLE_BGP_VNC
 	struct bgp_attr_encap_tlv *vnc_tlvs =
 		bgp_attr_get_vnc_tlvs(attr);
-	for(struct bgp_attr_encap_tlv *p = vnc_tlvs;p; p = p->next) {
-		MIX(encap_tlv_hash_key_make(p));
+	for(struct bgp_attr_encap_tlv *q = vnc_tlvs;q; q = q->next) {
+		MIX(encap_tlv_hash_key_make(q));
 	}
 #endif
 	MIX3(attr->mp_nexthop_len, attr->rmap_table_id, attr->nh_type);
@@ -1128,7 +1129,7 @@ unsigned int attrhash_key_make(const void *p)
 	MIX3(attr->nh_ifindex, attr->nh_lla_ifindex, attr->distance);
 	MIX3(attr->bh_type, attr->otc, bgp_attr_get_aigp_metric(attr));
 	MIX3(attr->mm_seqnum, attr->df_alg, attr->df_pref);
-	MIX(attr->encap_tunneltype);
+	MIX(attr->encap_tlvs->tunnel_type);
 	key = jhash(&attr->rmac, sizeof(attr->rmac), key);
 	if (bgp_attr_get_nhc(attr))
 		MIX(bgp_nhc_hash_key_make(bgp_attr_get_nhc(attr)));
@@ -1381,7 +1382,7 @@ struct attr *bgp_attr_intern(struct attr *attr)
 	}
 	if (attr->encap_tlvs) {
 		if (!attr->encap_tlvs->refcnt)
-			attr->encap_tlvs = encap_tlv_intern(attr->encap_tlvs);
+			attr->encap_tlvs = encap_tlv_intern(attr->encap_tlvs,ENCAP_SUBTLV_TYPE);
 		else
 			attr->encap_tlvs->refcnt++;
 	}
@@ -1408,7 +1409,7 @@ struct attr *bgp_attr_intern(struct attr *attr)
 			attr->srv6_vpn->refcnt++;
 	}
 #ifdef ENABLE_BGP_VNC
-	struct bgp_attr_encap_subtlv *vnc_tlvs =
+	struct bgp_attr_encap_tlv *vnc_tlvs =
 		bgp_attr_get_vnc_tlvs(attr);
 
 	if (vnc_tlvs) {
@@ -1627,7 +1628,7 @@ void bgp_attr_unintern_sub(struct attr *attr)
 	bgp_nhc_unintern(&nhc);
 	bgp_attr_set_nhc(attr, NULL);
 
-	encap_tlv_unintern(&attr->encap_tlvs);
+	encap_tlv_unintern(&attr->encap_tlvs, ENCAP_SUBTLV_TYPE);
 
 #ifdef ENABLE_BGP_VNC
 	struct bgp_attr_encap_tlv *vnc_tlvs =
@@ -3041,7 +3042,7 @@ bgp_attr_ext_communities(struct bgp_attr_parser_args *args)
 
 	/* Get the tunnel type from encap extended community */
 	bgp_attr_extcom_tunnel_type(attr,
-		(bgp_encap_types *)&attr->encap_tunneltype);
+		(bgp_encap_types *)&attr->encap_tlvs->tunnel_type);
 
 	/* Extract link bandwidth, if any. */
 	(void)ecommunity_linkbw_present(bgp_attr_get_ecommunity(attr),
@@ -3118,7 +3119,7 @@ static int bgp_attr_encap(struct bgp_attr_parser_args *args, struct bgp_attr_enc
 		if (BGP_ATTR_ENCAP == type) {
 			/* read outer TLV type and length */
 			uint16_t subgroup_announce_route;
-
+			uint16_t subtlv_length = 0;
 			if (length < 4) {
 				zlog_err(
 					"Tunnel Encap attribute not long enough to contain outer T,L");
@@ -3201,7 +3202,7 @@ static int bgp_attr_encap(struct bgp_attr_parser_args *args, struct bgp_attr_enc
 			length -= sublength;
 
 			/* attach tlv to encap chain */
-			if (sltv_first == NULL) {
+			if (stlv_first == NULL) {
 				stlv_first = tlv;
 				stlv_last = tlv;
 			} else {
@@ -3214,7 +3215,7 @@ static int bgp_attr_encap(struct bgp_attr_parser_args *args, struct bgp_attr_enc
 					    sizeof(struct bgp_attr_encap_tlv) + tlv_length);
 		add->tunnel_type = tunneltype;
 		add->length = tlv_length;
-		add->subtlvs = stlv_first;
+		add->encap_subtlvs = stlv_first;
 		if (tlv_first == NULL) {
 			tlv_first = add;
 			tlv_last = add;
@@ -5016,7 +5017,7 @@ static void bgp_packet_mpattr_tea(struct bgp *bgp, struct peer *peer,
 	}
 	for (struct bgp_attr_encap_tlv *encap_tlv = tlvs;
 			encap_tlv; encap_tlv = encap_tlv->next) {
-		for (st = subtlvs; st; st = st->next) {
+		for (st = tlvs->encap_subtlvs; st; st = st->next) {
 			attrlenfield += (attrhdrlen + st->length);
 		}	
 		attrlenfield += 4;
@@ -5044,29 +5045,26 @@ static void bgp_packet_mpattr_tea(struct bgp *bgp, struct peer *peer,
 		stream_putc(s, CHECK_FLAG(attrlenfield, 0xff));
 	}
 	for (struct bgp_attr_encap_tlv *encap_tlv = tlvs; encap_tlv; encap_tlv = encap_tlv->next) {
-			if (attrtype == BGP_ATTR_ENCAP) {
-				/* write outer T+L */
-				stream_putw(s, attr->encap_tlv->tunnel_type);
-				stream_putw(s, attrlenfield - 4);
-			}
+		if (attrtype == BGP_ATTR_ENCAP) {
+			/* write outer T+L */
+			stream_putw(s, attr->encap_tlvs->tunnel_type);
+			stream_putw(s, attrlenfield - 4);
+		}
 
-			/* write each sub-tlv */
-			for (st = encap_tlv->encap_subtlvs; st; st = st->next) {
-				if (attrtype == BGP_ATTR_ENCAP) {
-					stream_putc(s, st->type);
-					stream_putc(s, st->length);
-		#ifdef ENABLE_BGP_VNC
-				} else {
-					stream_putw(s, st->type);
-					stream_putw(s, st->length);
-		#endif
-				}
-				stream_put(s, st->value, st->length);
+		/* write each sub-tlv */
+		for (st = encap_tlv->encap_subtlvs; st; st = st->next) {
+			if (attrtype == BGP_ATTR_ENCAP) {
+				stream_putc(s, st->type);
+				stream_putc(s, st->length);
+	#ifdef ENABLE_BGP_VNC
+			} else {
+				stream_putw(s, st->type);
+				stream_putw(s, st->length);
+	#endif
 			}
+			stream_put(s, st->value, st->length);
 		}
 	}
-	
-	
 }
 
 void bgp_packet_mpattr_end(struct stream *s, size_t sizep)

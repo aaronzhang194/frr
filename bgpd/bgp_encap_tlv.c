@@ -225,7 +225,7 @@ subtlv_encode_remote_endpoint(struct bgp_tea_subtlv_remote_endpoint *st)
 			if (last) {                                            \
 				last->next = new;                              \
 			} else {                                               \
-				attr->encap_subtlvs = new;                     \
+				attr->encap_tlvs->encap_subtlvs = new;                     \
 			}                                                      \
 			last = new;                                            \
 		}                                                              \
@@ -238,10 +238,10 @@ void bgp_encap_type_l2tpv3overip_to_tlv(
 	struct bgp_attr_encap_subtlv *last;
 
 	/* advance to last subtlv */
-	for (last = attr->encap_subtlvs; last && last->next; last = last->next)
+	for (last = attr->encap_tlvs->encap_subtlvs; last && last->next; last = last->next)
 		;
 
-	attr->encap_tunneltype = BGP_ENCAP_TYPE_L2TPV3_OVER_IP;
+	attr->encap_tlvs->tunnel_type = BGP_ENCAP_TYPE_L2TPV3_OVER_IP;
 
 	assert(CHECK_FLAG(bet->valid_subtlvs, BGP_TEA_SUBTLV_ENCAP));
 
@@ -261,10 +261,10 @@ void bgp_encap_type_gre_to_tlv(
 	struct bgp_attr_encap_subtlv *last;
 
 	/* advance to last subtlv */
-	for (last = attr->encap_subtlvs; last && last->next; last = last->next)
+	for (last = attr->encap_tlvs->encap_subtlvs; last && last->next; last = last->next)
 		;
 
-	attr->encap_tunneltype = BGP_ENCAP_TYPE_GRE;
+	attr->encap_tlvs->tunnel_type = BGP_ENCAP_TYPE_GRE;
 
 	ENC_SUBTLV(BGP_TEA_SUBTLV_ENCAP, subtlv_encode_encap_gre, st_encap);
 	ENC_SUBTLV(BGP_TEA_SUBTLV_PROTO_TYPE, subtlv_encode_proto_type,
@@ -281,10 +281,10 @@ void bgp_encap_type_ip_in_ip_to_tlv(
 	struct bgp_attr_encap_subtlv *last;
 
 	/* advance to last subtlv */
-	for (last = attr->encap_subtlvs; last && last->next; last = last->next)
+	for (last = attr->encap_tlvs->encap_subtlvs; last && last->next; last = last->next)
 		;
 
-	attr->encap_tunneltype = BGP_ENCAP_TYPE_IP_IN_IP;
+	attr->encap_tlvs->tunnel_type = BGP_ENCAP_TYPE_IP_IN_IP;
 
 	ENC_SUBTLV(BGP_TEA_SUBTLV_PROTO_TYPE, subtlv_encode_proto_type,
 		   st_proto);
@@ -301,10 +301,10 @@ void bgp_encap_type_transmit_tunnel_endpoint(
 	struct bgp_attr_encap_subtlv *last;
 
 	/* advance to last subtlv */
-	for (last = attr->encap_subtlvs; last && last->next; last = last->next)
+	for (last = attr->encap_tlvs->encap_subtlvs; last && last->next; last = last->next)
 		;
 
-	attr->encap_tunneltype = BGP_ENCAP_TYPE_TRANSMIT_TUNNEL_ENDPOINT;
+	attr->encap_tlvs->tunnel_type = BGP_ENCAP_TYPE_TRANSMIT_TUNNEL_ENDPOINT;
 
 	/* no subtlvs for this type */
 }
@@ -316,10 +316,10 @@ void bgp_encap_type_ipsec_in_tunnel_mode_to_tlv(
 	struct bgp_attr_encap_subtlv *last;
 
 	/* advance to last subtlv */
-	for (last = attr->encap_subtlvs; last && last->next; last = last->next)
+	for (last = attr->encap_tlvs->encap_subtlvs; last && last->next; last = last->next)
 		;
 
-	attr->encap_tunneltype = BGP_ENCAP_TYPE_IPSEC_IN_TUNNEL_MODE;
+	attr->encap_tlvs->tunnel_type = BGP_ENCAP_TYPE_IPSEC_IN_TUNNEL_MODE;
 
 	ENC_SUBTLV(BGP_TEA_SUBTLV_IPSEC_TA, subtlv_encode_ipsec_ta,
 		   st_ipsec_ta);
@@ -333,10 +333,10 @@ void bgp_encap_type_ip_in_ip_tunnel_with_ipsec_transport_mode_to_tlv(
 	struct bgp_attr_encap_subtlv *last;
 
 	/* advance to last subtlv */
-	for (last = attr->encap_subtlvs; last && last->next; last = last->next)
+	for (last = attr->encap_tlvs->encap_subtlvs; last && last->next; last = last->next)
 		;
 
-	attr->encap_tunneltype =
+	attr->encap_tlvs->tunnel_type =
 		BGP_ENCAP_TYPE_IP_IN_IP_TUNNEL_WITH_IPSEC_TRANSPORT_MODE;
 
 	ENC_SUBTLV(BGP_TEA_SUBTLV_IPSEC_TA, subtlv_encode_ipsec_ta,
@@ -351,10 +351,10 @@ void bgp_encap_type_mpls_in_ip_tunnel_with_ipsec_transport_mode_to_tlv(
 	struct bgp_attr_encap_subtlv *last;
 
 	/* advance to last subtlv */
-	for (last = attr->encap_subtlvs; last && last->next; last = last->next)
+	for (last = attr->encap_tlvs->encap_subtlvs; last && last->next; last = last->next)
 		;
 
-	attr->encap_tunneltype =
+	attr->encap_tlvs->tunnel_type =
 		BGP_ENCAP_TYPE_MPLS_IN_IP_TUNNEL_WITH_IPSEC_TRANSPORT_MODE;
 
 	ENC_SUBTLV(BGP_TEA_SUBTLV_IPSEC_TA, subtlv_encode_ipsec_ta,
@@ -368,10 +368,10 @@ void bgp_encap_type_pbb_to_tlv(
 	struct bgp_attr_encap_subtlv *last;
 
 	/* advance to last subtlv */
-	for (last = attr->encap_subtlvs; last && last->next; last = last->next)
+	for (last = attr->encap_tlvs->encap_subtlvs; last && last->next; last = last->next)
 		;
 
-	attr->encap_tunneltype = BGP_ENCAP_TYPE_PBB;
+	attr->encap_tlvs->tunnel_type = BGP_ENCAP_TYPE_PBB;
 
 	assert(CHECK_FLAG(bet->valid_subtlvs, BGP_TEA_SUBTLV_ENCAP));
 	ENC_SUBTLV(BGP_TEA_SUBTLV_ENCAP, subtlv_encode_encap_pbb, st_encap);
@@ -384,11 +384,12 @@ void bgp_encap_type_vxlan_to_tlv(
 	struct bgp_attr_encap_subtlv *tlv;
 	uint32_t vnid;
 
-	attr->encap_tunneltype = BGP_ENCAP_TYPE_VXLAN;
+	attr->encap_tlvs->tunnel_type = BGP_ENCAP_TYPE_VXLAN;
 
 	if (bet == NULL || !bet->vnid)
 		return;
-	XFREE(MTYPE_ENCAP_SUBTLV, attr->encap_subtlvs);
+	// ? TBD
+	XFREE(MTYPE_ENCAP_SUBTLV, attr->encap_tlvs->encap_subtlvs);
 	tlv = XCALLOC(MTYPE_ENCAP_SUBTLV,
 		      sizeof(struct bgp_attr_encap_subtlv) + 12);
 	tlv->type = 1; /* encapsulation type */
@@ -401,7 +402,7 @@ void bgp_encap_type_vxlan_to_tlv(
 		char *ptr = (char *)&tlv->value + 4;
 		memcpy(ptr, bet->mac_address, 6);
 	}
-	attr->encap_subtlvs = tlv;
+	attr->encap_tlvs->encap_subtlvs = tlv;
 	return;
 }
 
@@ -409,7 +410,7 @@ void bgp_encap_type_nvgre_to_tlv(
 	struct bgp_encap_type_nvgre *bet, /* input structure */
 	struct attr *attr)
 {
-	attr->encap_tunneltype = BGP_ENCAP_TYPE_NVGRE;
+	attr->encap_tlvs->tunnel_type = BGP_ENCAP_TYPE_NVGRE;
 }
 
 void bgp_encap_type_mpls_to_tlv(
@@ -423,7 +424,7 @@ void bgp_encap_type_mpls_in_gre_to_tlv(
 	struct bgp_encap_type_mpls_in_gre *bet, /* input structure */
 	struct attr *attr)
 {
-	attr->encap_tunneltype = BGP_ENCAP_TYPE_MPLS_IN_GRE;
+	attr->encap_tlvs->tunnel_type = BGP_ENCAP_TYPE_MPLS_IN_GRE;
 }
 
 void bgp_encap_type_vxlan_gpe_to_tlv(
@@ -431,7 +432,7 @@ void bgp_encap_type_vxlan_gpe_to_tlv(
 	struct attr *attr)
 {
 
-	attr->encap_tunneltype = BGP_ENCAP_TYPE_VXLAN_GPE;
+	attr->encap_tlvs->tunnel_type = BGP_ENCAP_TYPE_VXLAN_GPE;
 }
 
 void bgp_encap_type_mpls_in_udp_to_tlv(
@@ -439,7 +440,7 @@ void bgp_encap_type_mpls_in_udp_to_tlv(
 	struct attr *attr)
 {
 
-	attr->encap_tunneltype = BGP_ENCAP_TYPE_MPLS_IN_UDP;
+	attr->encap_tlvs->tunnel_type = BGP_ENCAP_TYPE_MPLS_IN_UDP;
 }
 
 
