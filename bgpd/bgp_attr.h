@@ -705,7 +705,19 @@ bgp_attr_set_vnc_tlvs(struct attr *attr,
 	attr->vnc_tlvs = vnc_tlvs;
 #endif
 }
-
+static inline void
+bgp_attr_set_vnc_subtlvs(struct attr *attr,
+			 struct bgp_attr_encap_subtlv *vnc_subtlvs)
+{
+#ifdef ENABLE_BGP_VNC
+	if (attr->vnc_tlvs == NULL) {
+		return;
+	}
+	else {
+		attr->vnc_tlvs->encap_subtlvs = vnc_subtlvs;
+	}
+#endif
+}
 extern bool route_matches_soo(struct bgp_path_info *pi, struct ecommunity *soo);
 extern void evpn_overlay_free(struct bgp_route_evpn *bre);
 extern struct bgp_route_evpn *evpn_overlay_intern(struct bgp_route_evpn *bre);

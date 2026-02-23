@@ -723,7 +723,7 @@ void add_vnc_route(struct rfapi_descriptor *rfd, /* cookie, VPN UN addr, peer */
 			 * It's a hack to avoid adding yet another argument
 			 * to add_vnc_route()
 			 */
-			encaptlv = encap_tlv_dup(
+			encaptlv = encap_subtlv_dup(
 				(struct bgp_attr_encap_subtlv *)rfp_options);
 			if (vnc_subtlvs)
 				vnc_subtlvs->next = encaptlv;
