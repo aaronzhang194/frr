@@ -3118,7 +3118,7 @@ static int bgp_attr_encap(struct bgp_attr_parser_args *args, struct bgp_attr_enc
 		uint16_t tlv_length = 0;
 		if (BGP_ATTR_ENCAP == type) {
 			/* read outer TLV type and length */
-			uint16_t subgroup_announce_route;
+			// uint16_t subgroup_announce_route;
 			uint16_t subtlv_length = 0;
 			if (length < 4) {
 				zlog_err(
@@ -4702,6 +4702,8 @@ size_t bgp_packet_mpattr_start(struct stream *s, struct peer *peer, afi_t afi,
 				stream_put_ipv4(s, attr->nexthop.s_addr);
 			}
 			break;
+		case SAFI_MPTE:
+			// !!TODO: 
 		case SAFI_UNSPEC:
 		case SAFI_MAX:
 			assert(!"SAFI's UNSPEC or MAX being specified are a DEV ESCAPE");
@@ -4756,6 +4758,8 @@ size_t bgp_packet_mpattr_start(struct stream *s, struct peer *peer, afi_t afi,
 		case SAFI_FLOWSPEC:
 			stream_putc(s, 0); /* no nexthop for flowspec */
 			break;
+		case SAFI_MPTE:
+			// !!TODO: 
 		case SAFI_UNSPEC:
 		case SAFI_MAX:
 			assert(!"SAFI's UNSPEC or MAX being specified are a DEV ESCAPE");
@@ -4919,6 +4923,8 @@ void bgp_packet_mpattr_prefix(struct stream *s, afi_t afi, safi_t safi,
 	case SAFI_MULTICAST:
 		stream_put_prefix_addpath(s, p, addpath_capable, addpath_tx_id);
 		break;
+	case SAFI_MPTE:
+		// !!TODO:
 	case SAFI_ENCAP:
 		assert(!"Please add proper encoding of SAFI_ENCAP");
 		break;
@@ -4960,6 +4966,8 @@ size_t bgp_packet_mpattr_prefix_size(afi_t afi, safi_t safi,
 	case SAFI_FLOWSPEC:
 		size = ((struct prefix_fs *)p)->prefix.prefixlen;
 		break;
+	case SAFI_MPTE:
+		// !!TODO:
 	}
 
 	return size;

@@ -181,6 +181,8 @@ enum node_type {
 	RPKI_VRF_NODE,  /* RPKI node for VRF */
 	PIM_NODE,		 /* PIM protocol mode */
 	PIM6_NODE,		 /* PIM protocol for IPv6 mode */
+	BGP_MPTEV4_NODE,		 /* BGP MP-TE IPv4 address family */
+	BGP_MPTEV6_NODE,		 /* BGP MP-TE IPv6 address family */
 	NODE_TYPE_MAX, /* maximum */
 };
 /* clang-format on */

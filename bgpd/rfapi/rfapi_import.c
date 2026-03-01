@@ -237,6 +237,8 @@ void rfapiCheckRefcount(struct agg_node *rn, safi_t safi, int lockoffset)
 		case SAFI_UNICAST:
 		case SAFI_MULTICAST:
 		case SAFI_EVPN:
+		case SAFI_MPTE:
+		// !!TODO:
 		case SAFI_LABELED_UNICAST:
 		case SAFI_FLOWSPEC:
 		case SAFI_MAX:
@@ -3834,6 +3836,8 @@ rfapiBgpInfoFilteredImportFunction(safi_t safi)
 	case SAFI_UNICAST:
 	case SAFI_MULTICAST:
 	case SAFI_EVPN:
+	case SAFI_MPTE:
+	// !!TODO:
 	case SAFI_LABELED_UNICAST:
 	case SAFI_FLOWSPEC:
 	case SAFI_MAX:
@@ -4079,6 +4083,8 @@ static void rfapiProcessPeerDownRt(struct peer *peer,
 	case SAFI_UNICAST:
 	case SAFI_MULTICAST:
 	case SAFI_EVPN:
+	case SAFI_MPTE:
+	// !!TODO:
 	case SAFI_LABELED_UNICAST:
 	case SAFI_FLOWSPEC:
 	case SAFI_MAX:

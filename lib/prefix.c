@@ -176,6 +176,8 @@ const char *safi2str(safi_t safi)
 		return "labeled-unicast";
 	case SAFI_FLOWSPEC:
 		return "flowspec";
+	case SAFI_MPTE:
+		return "mpte";
 	case SAFI_UNSPEC:
 	case SAFI_MAX:
 		return "unknown";

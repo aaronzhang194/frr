@@ -204,5 +204,26 @@ submodule frr-bgp-common-multiprotocol {
       description
         "IPv6 flowspec configuration options.";
     }
+
+    container ipv4-mpte {
+      when "derived-from-or-self(../afi-safi-name, 'frr-rt:ipv4-mpte')" {
+        description
+          "Include this container for IPv4 mpte specific
+           configuration.";
+      }
+      description
+        "IPv4 multicast configuration options.";
+    }
+
+    container ipv6-mpte {
+      when "derived-from-or-self(../afi-safi-name, 'frr-rt:ipv6-mpte')" {
+        description
+          "Include this container for IPv6 mpte specific
+           configuration.";
+      }
+      description
+        "IPv6 multicast configuration options.";
+    }
+
   }
 }

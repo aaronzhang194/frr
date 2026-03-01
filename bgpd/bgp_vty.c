@@ -170,6 +170,8 @@ static enum node_type bgp_node_type(afi_t afi, safi_t safi)
 			return BGP_VPNV4_NODE;
 		case SAFI_FLOWSPEC:
 			return BGP_FLOWSPECV4_NODE;
+		case SAFI_MPTE:
+			return BGP_MPTEV4_NODE;
 		case SAFI_UNSPEC:
 		case SAFI_ENCAP:
 		case SAFI_EVPN:
@@ -190,6 +192,8 @@ static enum node_type bgp_node_type(afi_t afi, safi_t safi)
 			return BGP_VPNV6_NODE;
 		case SAFI_FLOWSPEC:
 			return BGP_FLOWSPECV6_NODE;
+		case SAFI_MPTE:
+			return BGP_MPTEV6_NODE;
 		case SAFI_UNSPEC:
 		case SAFI_ENCAP:
 		case SAFI_EVPN:
@@ -225,6 +229,8 @@ static const char *get_afi_safi_vty_str(afi_t afi, safi_t safi)
 			return "IPv4 Encap";
 		if (safi == SAFI_FLOWSPEC)
 			return "IPv4 Flowspec";
+		if (safi == SAFI_MPTE)
+			return "IPv4 MPTE";
 	} else if (afi == AFI_IP6) {
 		if (safi == SAFI_UNICAST)
 			return "IPv6 Unicast";
@@ -238,6 +244,8 @@ static const char *get_afi_safi_vty_str(afi_t afi, safi_t safi)
 			return "IPv6 Encap";
 		if (safi == SAFI_FLOWSPEC)
 			return "IPv6 Flowspec";
+		if (safi == SAFI_MPTE)
+			return "IPv6 MPTE";
 	} else if (afi == AFI_L2VPN) {
 		if (safi == SAFI_EVPN)
 			return "L2VPN EVPN";
@@ -267,6 +275,8 @@ static const char *get_afi_safi_json_str(afi_t afi, safi_t safi)
 			return "ipv4Encap";
 		if (safi == SAFI_FLOWSPEC)
 			return "ipv4Flowspec";
+		if (safi == SAFI_MPTE)
+			return "ipv4Mpte";
 	} else if (afi == AFI_IP6) {
 		if (safi == SAFI_UNICAST)
 			return "ipv6Unicast";
@@ -280,6 +290,8 @@ static const char *get_afi_safi_json_str(afi_t afi, safi_t safi)
 			return "ipv6Encap";
 		if (safi == SAFI_FLOWSPEC)
 			return "ipv6Flowspec";
+		if (safi == SAFI_MPTE)
+			return "ipv6Mpte";
 	} else if (afi == AFI_L2VPN) {
 		if (safi == SAFI_EVPN)
 			return "l2VpnEvpn";
@@ -414,6 +426,7 @@ afi_t bgp_node_afi(struct vty *vty)
 	case BGP_IPV6L_NODE:
 	case BGP_VPNV6_NODE:
 	case BGP_FLOWSPECV6_NODE:
+	case BGP_MPTEV6_NODE:
 		afi = AFI_IP6;
 		break;
 	case BGP_EVPN_NODE:
@@ -450,6 +463,10 @@ safi_t bgp_node_safi(struct vty *vty)
 	case BGP_FLOWSPECV4_NODE:
 	case BGP_FLOWSPECV6_NODE:
 		safi = SAFI_FLOWSPEC;
+		break;
+	case BGP_MPTEV4_NODE:
+	case BGP_MPTEV6_NODE:
+		safi = SAFI_MPTE;
 		break;
 	default:
 		safi = SAFI_UNICAST;
@@ -515,6 +532,8 @@ safi_t bgp_vty_safi_from_str(const char *safi_str)
 		safi = SAFI_LABELED_UNICAST;
 	else if (strmatch(safi_str, "flowspec"))
 		safi = SAFI_FLOWSPEC;
+	else if (strmatch(safi_str, "mpte"))
+		safi = SAFI_MPTE;
 	return safi;
 }
 
@@ -546,6 +565,10 @@ int argv_find_and_parse_safi(struct cmd_token **argv, int argc, int *index,
 		ret = 1;
 		if (safi)
 			*safi = SAFI_FLOWSPEC;
+	} else if (argv_find(argv, argc, "mpte", index)) {
+		ret = 1;
+		if (safi)
+			*safi = SAFI_MPTE;
 	}
 	return ret;
 }
@@ -581,6 +604,8 @@ static const char *get_bgp_default_af_flag(afi_t afi, safi_t safi)
 			return "ipv4-labeled-unicast";
 		case SAFI_FLOWSPEC:
 			return "ipv4-flowspec";
+		case SAFI_MPTE:
+			return "ipv4-mpte";
 		case SAFI_UNSPEC:
 		case SAFI_EVPN:
 		case SAFI_MAX:
@@ -601,6 +626,8 @@ static const char *get_bgp_default_af_flag(afi_t afi, safi_t safi)
 			return "ipv6-labeled-unicast";
 		case SAFI_FLOWSPEC:
 			return "ipv6-flowspec";
+		case SAFI_MPTE:
+			return "ipv6-mpte";
 		case SAFI_UNSPEC:
 		case SAFI_EVPN:
 		case SAFI_MAX:
@@ -617,6 +644,7 @@ static const char *get_bgp_default_af_flag(afi_t afi, safi_t safi)
 		case SAFI_ENCAP:
 		case SAFI_LABELED_UNICAST:
 		case SAFI_FLOWSPEC:
+		case SAFI_MPTE:
 		case SAFI_UNSPEC:
 		case SAFI_MAX:
 			return "unknown-afi/safi";
@@ -4439,11 +4467,13 @@ DEFPY(bgp_default_afi_safi, bgp_default_afi_safi_cmd,
       "ipv4-vpn|"
       "ipv4-labeled-unicast|"
       "ipv4-flowspec|"
+	  "ipv4-mpte|"
       "ipv6-unicast|"
       "ipv6-multicast|"
       "ipv6-vpn|"
       "ipv6-labeled-unicast|"
       "ipv6-flowspec|"
+	  "ipv6-mpte|"
       "l2vpn-evpn>$afi_safi",
       NO_STR
       BGP_STR
@@ -4453,11 +4483,13 @@ DEFPY(bgp_default_afi_safi, bgp_default_afi_safi_cmd,
       "Activate ipv4-vpn for a peer by default\n"
       "Activate ipv4-labeled-unicast for a peer by default\n"
       "Activate ipv4-flowspec for a peer by default\n"
+	  "Activate ipv4-mpte for a peer by default\n"
       "Activate ipv6-unicast for a peer by default\n"
       "Activate ipv6-multicast for a peer by default\n"
       "Activate ipv6-vpn for a peer by default\n"
       "Activate ipv6-labeled-unicast for a peer by default\n"
       "Activate ipv6-flowspec for a peer by default\n"
+	  "Activate ipv6-mpte for a peer by default\n"
       "Activate l2vpn-evpn for a peer by default\n")
 {
 	VTY_DECLVAR_CONTEXT(bgp, bgp);
@@ -11114,7 +11146,7 @@ DEFPY (af_routetarget_import,
 
 DEFUN_NOSH (address_family_ipv4_safi,
 	address_family_ipv4_safi_cmd,
-	"address-family ipv4 [<unicast|multicast|vpn|labeled-unicast|flowspec>]",
+	"address-family ipv4 [<unicast|multicast|vpn|labeled-unicast|flowspec|mpte>]",
 	"Enter Address Family command mode\n"
 	BGP_AF_STR
 	BGP_SAFI_WITH_LABEL_HELP_STR)
@@ -11139,7 +11171,7 @@ DEFUN_NOSH (address_family_ipv4_safi,
 
 DEFUN_NOSH (address_family_ipv6_safi,
 	address_family_ipv6_safi_cmd,
-	"address-family ipv6 [<unicast|multicast|vpn|labeled-unicast|flowspec>]",
+	"address-family ipv6 [<unicast|multicast|vpn|labeled-unicast|flowspec|mpte>]",
 	"Enter Address Family command mode\n"
 	BGP_AF_STR
 	BGP_SAFI_WITH_LABEL_HELP_STR)
@@ -11528,7 +11560,7 @@ static int bgp_clear_prefix(struct vty *vty, const char *view_name,
 /* one clear bgp command to rule them all */
 DEFUN (clear_ip_bgp_all,
        clear_ip_bgp_all_cmd,
-       "clear [ip] bgp [<view|vrf> VIEWVRFNAME] [<ipv4|ipv6|l2vpn> [<unicast|multicast|vpn|labeled-unicast|flowspec|evpn>]] <*|A.B.C.D$neighbor|X:X::X:X$neighbor|WORD$neighbor|ASNUM|external|peer-group PGNAME> [<soft [<in|out>]|in [prefix-filter]|out|message-stats|capabilities>]",
+       "clear [ip] bgp [<view|vrf> VIEWVRFNAME] [<ipv4|ipv6|l2vpn> [<unicast|multicast|vpn|labeled-unicast|flowspec|evpn|mpte>]] <*|A.B.C.D$neighbor|X:X::X:X$neighbor|WORD$neighbor|ASNUM|external|peer-group PGNAME> [<soft [<in|out>]|in [prefix-filter]|out|message-stats|capabilities>]",
        CLEAR_STR
        IP_STR
        BGP_STR
@@ -11536,7 +11568,7 @@ DEFUN (clear_ip_bgp_all,
        BGP_AFI_HELP_STR
        BGP_AF_STR
        BGP_SAFI_WITH_LABEL_HELP_STR
-       BGP_AF_MODIFIER_STR
+	   BGP_AF_MODIFIER_STR
        "Clear all peers\n"
        "BGP IPv4 neighbor to clear\n"
        "BGP IPv6 neighbor to clear\n"
@@ -17478,7 +17510,7 @@ static void show_bgp_updgrps_adj_info_aux(struct vty *vty, const char *name,
 
 DEFPY(show_ip_bgp_instance_updgrps_adj_s,
       show_ip_bgp_instance_updgrps_adj_s_cmd,
-      "show [ip]$ip bgp [<view|vrf> VIEWVRFNAME$vrf] [<ipv4|ipv6>$afi <unicast|multicast|vpn>$safi] update-groups [SUBGROUP-ID]$sgid <advertise-queue|advertised-routes|packet-queue>$rtq",
+      "show [ip]$ip bgp [<view|vrf> VIEWVRFNAME$vrf] [<ipv4|ipv6>$afi <unicast|multicast|vpn|mpte>$safi] update-groups [SUBGROUP-ID]$sgid <advertise-queue|advertised-routes|packet-queue>$rtq",
       SHOW_STR IP_STR BGP_STR BGP_INSTANCE_HELP_STR BGP_AFI_HELP_STR
 	      BGP_SAFI_HELP_STR
       "Detailed info about dynamic update groups\n"
@@ -19781,6 +19813,8 @@ static void bgp_config_write_family(struct vty *vty, struct bgp *bgp, afi_t afi,
 			vty_frame(vty, "ipv4 encap");
 		else if (safi == SAFI_FLOWSPEC)
 			vty_frame(vty, "ipv4 flowspec");
+		else if (safi == SAFI_MPTE) 
+			vty_frame(vty, "ipv4 mpte");
 	} else if (afi == AFI_IP6) {
 		if (safi == SAFI_UNICAST)
 			vty_frame(vty, "ipv6 unicast");
@@ -19794,6 +19828,8 @@ static void bgp_config_write_family(struct vty *vty, struct bgp *bgp, afi_t afi,
 			vty_frame(vty, "ipv6 encap");
 		else if (safi == SAFI_FLOWSPEC)
 			vty_frame(vty, "ipv6 flowspec");
+		else if (safi == SAFI_MPTE)
+			vty_frame(vty, "ipv6 mpte");
 	} else if (afi == AFI_L2VPN) {
 		if (safi == SAFI_EVPN)
 			vty_frame(vty, "l2vpn evpn");
@@ -19836,6 +19872,8 @@ static void bgp_config_write_family(struct vty *vty, struct bgp *bgp, afi_t afi,
 
 	if (safi == SAFI_FLOWSPEC)
 		bgp_fs_config_write_pbr(vty, bgp, afi, safi);
+
+	// !!TODO: Add support for SAFI_MPTE
 
 	if (safi == SAFI_MPLS_VPN)
 		bgp_vpn_config_write(vty, bgp, afi, safi);
@@ -20417,6 +20455,9 @@ int bgp_config_write(struct vty *vty)
 		/* FLOWSPEC v4 configuration.  */
 		bgp_config_write_family(vty, bgp, AFI_IP, SAFI_FLOWSPEC);
 
+		/* MPTEv4 configuration.  */
+		bgp_config_write_family(vty, bgp, AFI_IP, SAFI_MPTE);
+
 		/* IPv6 unicast configuration.  */
 		bgp_config_write_family(vty, bgp, AFI_IP6, SAFI_UNICAST);
 
@@ -20435,6 +20476,9 @@ int bgp_config_write(struct vty *vty)
 
 		/* FLOWSPEC v6 configuration.  */
 		bgp_config_write_family(vty, bgp, AFI_IP6, SAFI_FLOWSPEC);
+		
+		/* MPTEv6 configuration.  */
+		bgp_config_write_family(vty, bgp, AFI_IP6, SAFI_MPTE);
 
 		/* EVPN configuration.  */
 		bgp_config_write_family(vty, bgp, AFI_L2VPN, SAFI_EVPN);

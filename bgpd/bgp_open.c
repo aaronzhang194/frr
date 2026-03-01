@@ -202,6 +202,12 @@ void bgp_capability_vty_out(struct vty *vty, struct peer *peer, bool use_json,
 						"capabilityErrorMultiProtocolSafi",
 						"EVPN");
 					break;
+				case SAFI_MPTE:
+					json_object_string_add(
+						json_cap,
+						"capabilityErrorMultiProtocolSafi",
+						"MPTE");
+					break;
 				case SAFI_FLOWSPEC:
 					json_object_string_add(
 						json_cap,
@@ -256,6 +262,9 @@ void bgp_capability_vty_out(struct vty *vty, struct peer *peer, bool use_json,
 					break;
 				case SAFI_EVPN:
 					vty_out(vty, "SAFI EVPN");
+					break;
+				case SAFI_MPTE:
+					vty_out(vty, "SAFI MPTE");
 					break;
 				case SAFI_UNSPEC:
 				case SAFI_MAX:

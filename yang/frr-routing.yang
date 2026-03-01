@@ -172,6 +172,20 @@ module frr-routing {
   }
 
 
+  identity ipv4-mpte {
+    base afi-safi-type;
+    description
+      "This identity represents the IPv4 mpte address family.";
+  }
+
+
+  identity ipv6-mpte {
+    base afi-safi-type;
+    description
+      "This identity represents the IPv6 mpte address family.";
+  }
+
+
   identity control-plane-protocol {
     description
       "Base identity from which control-plane protocol identities are
