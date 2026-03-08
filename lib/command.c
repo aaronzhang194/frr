@@ -2496,7 +2496,7 @@ void cmd_init(int terminal)
 	varhandlers = list_new();
 
 	/* Allocate initial top vector of commands. */
-	cmdvec = vector_init(VECTOR_MIN_SIZE);
+	cmdvec = vector_init(200);
 
 	/* Default host value settings. */
 	host.name = XSTRDUP(MTYPE_HOST, names.nodename);

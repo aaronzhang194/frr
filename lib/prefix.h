@@ -33,6 +33,11 @@ typedef enum {
 	BGP_EVPN_IP_PREFIX_ROUTE, /* IP Prefix route */
 } bgp_evpn_route_type;
 
+/* MPTE route types. */
+typedef enum {
+	BGP_MPTE_JUNCTION_STATE = 1, /* MPTE Junction State */
+} bgp_mpte_route_type;
+
 /* value of first byte of ESI */
 #define ESI_TYPE_ARBITRARY 0  /* */
 #define ESI_TYPE_LACP      1  /* <> */
@@ -124,7 +129,22 @@ struct evpn_addr {
 #define es_addr u._es_addr
 #define prefix_addr u._prefix_addr
 };
-
+struct mpte_v4_junction_state {
+	in_addr_t mc_addr;
+	uint32_t dag_id;
+	in_addr_t node_addr;
+	in_addr_t origin_addr;
+	uint32_t junction_bw;
+	uint32_t version;
+	uint16_t tunnel_type;
+};
+struct mpte_addr {
+	uint8_t route_type;
+	union {
+		struct mpte_v4_junction_state _js_addr;
+	} u;
+#define js_addr u._js_addr
+};
 /*
  * A struct prefix contains an address family, a prefix length, and an
  * address.  This can represent either a 'network prefix' as defined
@@ -158,6 +178,10 @@ struct evpn_addr {
 #define AF_FLOWSPEC (AF_MAX + 2)
 #endif
 
+#if !defined(AF_MPTE)
+#define AF_MPTE (AF_MAX + 3)
+#endif
+
 struct flowspec_prefix {
 	uint8_t family;
 	uint16_t prefixlen; /* length in bytes */
@@ -181,6 +205,7 @@ struct prefix {
 		uint32_t val32[4];
 		uintptr_t ptr;
 		struct evpn_addr prefix_evpn; /* AF_EVPN */
+		struct mpte_addr prefix_mpte; /* AF_MPTE */
 		struct flowspec_prefix prefix_flowspec; /* AF_FLOWSPEC */
 	} u __attribute__((aligned(8)));
 };
@@ -226,7 +251,11 @@ struct prefix_evpn {
 	uint16_t prefixlen;
 	struct evpn_addr prefix __attribute__((aligned(8)));
 };
-
+struct prefix_mpte {
+	uint8_t family;
+	uint16_t prefixlen;
+	struct mpte_addr prefix __attribute__((aligned(8)));
+};
 static inline int is_evpn_prefix_ipaddr_none(const struct prefix_evpn *evp)
 {
 	if (evp->prefix.route_type == BGP_EVPN_AD_ROUTE)

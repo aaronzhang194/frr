@@ -50,6 +50,7 @@
 #include "bgpd/bgp_keepalives.h"
 #include "bgpd/bgp_flowspec.h"
 #include "bgpd/bgp_trace.h"
+#include <config.h>
 
 DEFINE_HOOK(bgp_packet_dump,
 		(struct peer *peer, uint8_t type, bgp_size_t size,
@@ -320,6 +321,8 @@ int bgp_nlri_parse(struct peer *peer, struct attr *attr,
 					  packet);
 	case SAFI_EVPN:
 		return bgp_nlri_parse_evpn(peer, attr, packet, mp_withdraw);
+	case SAFI_MPTE:
+		return bgp_nlri_parse_mpte(peer, attr, packet, mp_withdraw);
 	case SAFI_FLOWSPEC:
 		return bgp_nlri_parse_flowspec(peer, attr, packet, mp_withdraw);
 	}

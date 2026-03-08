@@ -719,12 +719,12 @@ int bgp_get_vty(struct bgp **bgp, as_t *as, const char *name,
  *
  * The show commands are generally of the form:
  * "show [ip] bgp [<view|vrf> VIEWVRFNAME] [<ipv4|ipv6>
- * [<unicast|multicast|vpn|labeled-unicast>]] ..."
+ * [<unicast|multicast|mpte|vpn|labeled-unicast>]] ..."
  *
  * Since we use argv_find if the show command in particular doesn't have:
  * [ip]
  * [<view|vrf> VIEWVRFNAME]
- * [<ipv4|ipv6> [<unicast|multicast|vpn|labeled-unicast>]]
+ * [<ipv4|ipv6> [<unicast|multicast|mpte|vpn|labeled-unicast>]]
  * The command parsing should still be ok.
  *
  * vty  -> The vty for the command so we can output some useful data in
@@ -11467,6 +11467,8 @@ DEFUN_NOSH (exit_address_family,
 	    || vty->node == BGP_IPV6_NODE || vty->node == BGP_IPV6M_NODE
 	    || vty->node == BGP_IPV6L_NODE || vty->node == BGP_VPNV6_NODE
 	    || vty->node == BGP_EVPN_NODE
+	    || vty->node == BGP_MPTEV4_NODE
+	    || vty->node == BGP_MPTEV6_NODE
 	    || vty->node == BGP_FLOWSPECV4_NODE
 	    || vty->node == BGP_FLOWSPECV6_NODE)
 		vty->node = BGP_NODE;
@@ -17510,7 +17512,7 @@ static void show_bgp_updgrps_adj_info_aux(struct vty *vty, const char *name,
 
 DEFPY(show_ip_bgp_instance_updgrps_adj_s,
       show_ip_bgp_instance_updgrps_adj_s_cmd,
-      "show [ip]$ip bgp [<view|vrf> VIEWVRFNAME$vrf] [<ipv4|ipv6>$afi <unicast|multicast|vpn|mpte>$safi] update-groups [SUBGROUP-ID]$sgid <advertise-queue|advertised-routes|packet-queue>$rtq",
+      "show [ip]$ip bgp [<view|vrf> VIEWVRFNAME$vrf] [<ipv4|ipv6>$afi <unicast|multicast|vpn>$safi] update-groups [SUBGROUP-ID]$sgid <advertise-queue|advertised-routes|packet-queue>$rtq",
       SHOW_STR IP_STR BGP_STR BGP_INSTANCE_HELP_STR BGP_AFI_HELP_STR
 	      BGP_SAFI_HELP_STR
       "Detailed info about dynamic update groups\n"
@@ -19873,8 +19875,6 @@ static void bgp_config_write_family(struct vty *vty, struct bgp *bgp, afi_t afi,
 	if (safi == SAFI_FLOWSPEC)
 		bgp_fs_config_write_pbr(vty, bgp, afi, safi);
 
-	// !!TODO: Add support for SAFI_MPTE
-
 	if (safi == SAFI_MPLS_VPN)
 		bgp_vpn_config_write(vty, bgp, afi, safi);
 
@@ -20600,6 +20600,22 @@ static struct cmd_node bgp_flowspecv6_node = {
 	.no_xpath = true,
 };
 
+static struct cmd_node bgp_mptev4_node = {
+	.name = "bgp ipv4 mpte",
+	.node = BGP_MPTEV4_NODE,
+	.parent_node = BGP_NODE,
+	.prompt = "%s(config-router-af)# ",
+	.no_xpath = true,
+};
+
+static struct cmd_node bgp_mptev6_node = {
+	.name = "bgp ipv6 mpte",
+	.node = BGP_MPTEV6_NODE,
+	.parent_node = BGP_NODE,
+	.prompt = "%s(config-router-af)# ",
+	.no_xpath = true,
+};
+
 static struct cmd_node bgp_srv6_node = {
 	.name = "bgp srv6",
 	.node = BGP_SRV6_NODE,
@@ -20925,6 +20941,8 @@ void bgp_vty_init(void)
 	install_node(&bgp_evpn_vni_node);
 	install_node(&bgp_flowspecv4_node);
 	install_node(&bgp_flowspecv6_node);
+	install_node(&bgp_mptev4_node);
+	install_node(&bgp_mptev6_node);
 	install_node(&bgp_srv6_node);
 
 	/* Install default VTY commands to new nodes.  */
@@ -20939,6 +20957,8 @@ void bgp_vty_init(void)
 	install_default(BGP_VPNV6_NODE);
 	install_default(BGP_FLOWSPECV4_NODE);
 	install_default(BGP_FLOWSPECV6_NODE);
+	install_default(BGP_MPTEV4_NODE);
+	install_default(BGP_MPTEV6_NODE);
 	install_default(BGP_EVPN_NODE);
 	install_default(BGP_EVPN_VNI_NODE);
 	install_default(BGP_SRV6_NODE);
@@ -21328,6 +21348,8 @@ void bgp_vty_init(void)
 	install_element(BGP_FLOWSPECV4_NODE, &neighbor_activate_cmd);
 	install_element(BGP_FLOWSPECV6_NODE, &neighbor_activate_cmd);
 	install_element(BGP_EVPN_NODE, &neighbor_activate_cmd);
+	install_element(BGP_MPTEV4_NODE, &neighbor_activate_cmd);
+	install_element(BGP_MPTEV6_NODE, &neighbor_activate_cmd);
 
 	/* "no neighbor activate" commands. */
 	install_element(BGP_NODE, &no_neighbor_activate_hidden_cmd);
@@ -21341,6 +21363,8 @@ void bgp_vty_init(void)
 	install_element(BGP_VPNV6_NODE, &no_neighbor_activate_cmd);
 	install_element(BGP_FLOWSPECV4_NODE, &no_neighbor_activate_cmd);
 	install_element(BGP_FLOWSPECV6_NODE, &no_neighbor_activate_cmd);
+	install_element(BGP_MPTEV4_NODE, &no_neighbor_activate_cmd);
+	install_element(BGP_MPTEV6_NODE, &no_neighbor_activate_cmd);
 	install_element(BGP_EVPN_NODE, &no_neighbor_activate_cmd);
 
 	/* "neighbor peer-group" set commands. */
@@ -21356,6 +21380,10 @@ void bgp_vty_init(void)
 			&neighbor_set_peer_group_hidden_cmd);
 	install_element(BGP_FLOWSPECV6_NODE,
 			&neighbor_set_peer_group_hidden_cmd);
+	install_element(BGP_MPTEV4_NODE,
+			&neighbor_set_peer_group_hidden_cmd);
+	install_element(BGP_MPTEV6_NODE,
+			&neighbor_set_peer_group_hidden_cmd);
 
 	/* "no neighbor peer-group unset" commands. */
 	install_element(BGP_NODE, &no_neighbor_set_peer_group_cmd);
@@ -21370,6 +21398,11 @@ void bgp_vty_init(void)
 			&no_neighbor_set_peer_group_hidden_cmd);
 	install_element(BGP_FLOWSPECV6_NODE,
 			&no_neighbor_set_peer_group_hidden_cmd);
+	install_element(BGP_MPTEV4_NODE,
+			&no_neighbor_set_peer_group_hidden_cmd);
+	install_element(BGP_MPTEV6_NODE,
+			&no_neighbor_set_peer_group_hidden_cmd);
+	
 
 	/* "neighbor softreconfiguration inbound" commands.*/
 	install_element(BGP_NODE, &neighbor_soft_reconfiguration_hidden_cmd);
@@ -21398,6 +21431,15 @@ void bgp_vty_init(void)
 			&neighbor_soft_reconfiguration_cmd);
 	install_element(BGP_FLOWSPECV6_NODE,
 			&no_neighbor_soft_reconfiguration_cmd);
+	install_element(BGP_MPTEV4_NODE,
+			&neighbor_soft_reconfiguration_cmd);
+	install_element(BGP_MPTEV4_NODE,
+			&no_neighbor_soft_reconfiguration_cmd);
+	install_element(BGP_MPTEV6_NODE,
+			&neighbor_soft_reconfiguration_cmd);
+	install_element(BGP_MPTEV6_NODE,
+			&no_neighbor_soft_reconfiguration_cmd);
+
 	install_element(BGP_EVPN_NODE, &neighbor_soft_reconfiguration_cmd);
 	install_element(BGP_EVPN_NODE, &no_neighbor_soft_reconfiguration_cmd);
 
@@ -21428,7 +21470,10 @@ void bgp_vty_init(void)
 	install_element(BGP_FLOWSPECV4_NODE, &no_neighbor_attr_unchanged_cmd);
 	install_element(BGP_FLOWSPECV6_NODE, &neighbor_attr_unchanged_cmd);
 	install_element(BGP_FLOWSPECV6_NODE, &no_neighbor_attr_unchanged_cmd);
-
+	install_element(BGP_MPTEV4_NODE, &neighbor_attr_unchanged_cmd);
+	install_element(BGP_MPTEV4_NODE, &no_neighbor_attr_unchanged_cmd);
+	install_element(BGP_MPTEV6_NODE, &neighbor_attr_unchanged_cmd);
+	install_element(BGP_MPTEV6_NODE, &no_neighbor_attr_unchanged_cmd);
 	/* "nexthop-local unchanged" commands */
 	install_element(BGP_IPV6_NODE, &neighbor_nexthop_local_unchanged_cmd);
 	install_element(BGP_IPV6_NODE,
@@ -21717,6 +21762,14 @@ void bgp_vty_init(void)
 			&neighbor_route_reflector_client_cmd);
 	install_element(BGP_FLOWSPECV6_NODE,
 			&no_neighbor_route_reflector_client_cmd);
+	install_element(BGP_MPTEV4_NODE,
+			&neighbor_route_reflector_client_cmd);
+	install_element(BGP_MPTEV4_NODE,
+			&no_neighbor_route_reflector_client_cmd);
+	install_element(BGP_MPTEV6_NODE,
+			&neighbor_route_reflector_client_cmd);
+	install_element(BGP_MPTEV6_NODE,
+			&no_neighbor_route_reflector_client_cmd);
 	install_element(BGP_EVPN_NODE, &neighbor_route_reflector_client_cmd);
 	install_element(BGP_EVPN_NODE, &no_neighbor_route_reflector_client_cmd);
 
@@ -21747,7 +21800,11 @@ void bgp_vty_init(void)
 	install_element(BGP_FLOWSPECV6_NODE, &neighbor_route_server_client_cmd);
 	install_element(BGP_FLOWSPECV6_NODE,
 			&no_neighbor_route_server_client_cmd);
-
+	install_element(BGP_MPTEV4_NODE, &neighbor_route_server_client_cmd);
+	install_element(BGP_MPTEV4_NODE,
+			&no_neighbor_route_server_client_cmd);
+	install_element(BGP_MPTEV6_NODE, &neighbor_route_server_client_cmd);
+	install_element(BGP_MPTEV6_NODE, &no_neighbor_route_server_client_cmd);
 	/* "neighbor disable-addpath-rx" commands. */
 	install_element(BGP_IPV4_NODE, &neighbor_disable_addpath_rx_cmd);
 	install_element(BGP_IPV4_NODE, &no_neighbor_disable_addpath_rx_cmd);
@@ -22399,6 +22456,8 @@ void bgp_vty_init(void)
 	install_element(BGP_VPNV6_NODE, &exit_address_family_cmd);
 	install_element(BGP_FLOWSPECV4_NODE, &exit_address_family_cmd);
 	install_element(BGP_FLOWSPECV6_NODE, &exit_address_family_cmd);
+	install_element(BGP_MPTEV4_NODE, &exit_address_family_cmd);
+	install_element(BGP_MPTEV6_NODE, &exit_address_family_cmd);
 	install_element(BGP_EVPN_NODE, &exit_address_family_cmd);
 
 	/* BGP retain all route-target */

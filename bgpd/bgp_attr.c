@@ -1129,7 +1129,6 @@ unsigned int attrhash_key_make(const void *p)
 	MIX3(attr->nh_ifindex, attr->nh_lla_ifindex, attr->distance);
 	MIX3(attr->bh_type, attr->otc, bgp_attr_get_aigp_metric(attr));
 	MIX3(attr->mm_seqnum, attr->df_alg, attr->df_pref);
-	MIX(attr->encap_tlvs->tunnel_type);
 	key = jhash(&attr->rmac, sizeof(attr->rmac), key);
 	if (bgp_attr_get_nhc(attr))
 		MIX(bgp_nhc_hash_key_make(bgp_attr_get_nhc(attr)));

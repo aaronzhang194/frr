@@ -1412,6 +1412,22 @@ static struct cmd_node bgp_flowspecv6_node = {
 	.no_xpath = true,
 };
 
+static struct cmd_node bgp_mptev4_node = {
+	.name = "bgp ipv4 mpte",
+	.node = BGP_MPTEV4_NODE,
+	.parent_node = BGP_NODE,
+	.prompt = "%s(config-router-af)# ",
+	.no_xpath = true,
+};
+
+static struct cmd_node bgp_mptev6_node = {
+	.name = "bgp ipv6 mpte",
+	.node = BGP_MPTEV6_NODE,
+	.parent_node = BGP_NODE,
+	.prompt = "%s(config-router-af)# ",
+	.no_xpath = true,
+};
+
 static struct cmd_node bgp_ipv4_node = {
 	.name = "bgp ipv4 unicast",
 	.node = BGP_IPV4_NODE,
@@ -1824,6 +1840,26 @@ DEFUNSH(VTYSH_BGPD, address_family_ipv4, address_family_ipv4_cmd,
 	BGP_AF_MODIFIER_STR)
 {
 	vty->node = BGP_IPV4_NODE;
+	return CMD_SUCCESS;
+}
+
+DEFUNSH(VTYSH_BGPD, address_family_mptev4, address_family_mptev4_cmd,
+	"address-family ipv4 mpte",
+	"Enter Address Family command mode\n"
+	BGP_AF_STR
+	BGP_AF_MODIFIER_STR)
+{
+	vty->node = BGP_MPTEV4_NODE;
+	return CMD_SUCCESS;
+}
+
+DEFUNSH(VTYSH_BGPD, address_family_mptev6, address_family_mptev6_cmd,
+	"address-family ipv6 mpte",
+	"Enter Address Family command mode\n"
+	BGP_AF_STR
+	BGP_AF_MODIFIER_STR)
+{
+	vty->node = BGP_MPTEV6_NODE;
 	return CMD_SUCCESS;
 }
 
@@ -5057,6 +5093,9 @@ void vtysh_init_vty(void)
 
 	/* Initialize commands. */
 	cmd_init(0);
+	if (cmdvec && vector_active(cmdvec) < 200) {
+        vector_set_index(cmdvec, 199, NULL);
+    }
 	cmd_variable_handler_register(vtysh_var_handler);
 
 	install_node(&bgp_node);
@@ -5071,6 +5110,8 @@ void vtysh_init_vty(void)
 	install_node(&bgp_ipv6_node);
 	install_node(&bgp_ipv6m_node);
 	install_node(&bgp_ipv6l_node);
+	install_node(&bgp_mptev4_node);
+	install_node(&bgp_mptev6_node);
 	install_node(&bgp_vrf_policy_node);
 	install_node(&bgp_vnc_defaults_node);
 	install_node(&bgp_vnc_nve_group_node);
@@ -5171,6 +5212,18 @@ void vtysh_init_vty(void)
 	install_element(BGP_FLOWSPECV6_NODE, &vtysh_quit_bgpd_cmd);
 	install_element(BGP_FLOWSPECV6_NODE, &vtysh_end_all_cmd);
 	install_element(BGP_FLOWSPECV6_NODE, &exit_address_family_cmd);
+
+	install_element(BGP_NODE, &address_family_mptev4_cmd);
+	install_element(BGP_MPTEV4_NODE, &vtysh_exit_bgpd_cmd);
+	install_element(BGP_MPTEV4_NODE, &vtysh_quit_bgpd_cmd);
+	install_element(BGP_MPTEV4_NODE, &vtysh_end_all_cmd);
+	install_element(BGP_MPTEV4_NODE, &exit_address_family_cmd);
+
+	install_element(BGP_NODE, &address_family_mptev6_cmd);
+	install_element(BGP_MPTEV6_NODE, &vtysh_exit_bgpd_cmd);
+	install_element(BGP_MPTEV6_NODE, &vtysh_quit_bgpd_cmd);
+	install_element(BGP_MPTEV6_NODE, &vtysh_end_all_cmd);
+	install_element(BGP_MPTEV6_NODE, &exit_address_family_cmd);
 
 	install_element(BGP_NODE, &address_family_ipv4_cmd);
 	install_element(BGP_IPV4_NODE, &vtysh_exit_bgpd_cmd);
