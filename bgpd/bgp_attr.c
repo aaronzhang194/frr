@@ -3117,28 +3117,22 @@ static int bgp_attr_encap(struct bgp_attr_parser_args *args, struct bgp_attr_enc
 		uint16_t tlv_length = 0;
 		if (BGP_ATTR_ENCAP == type) {
 			/* read outer TLV type and length */
-			// uint16_t subgroup_announce_route;
-			uint16_t subtlv_length = 0;
-			if (length < 4) {
-				zlog_err(
-					"Tunnel Encap attribute not long enough to contain outer T,L");
+			tunneltype = stream_getw(BGP_INPUT(peer));
+			tlv_length = stream_getw(BGP_INPUT(peer));
+			length -= 4;
+			
+			if (tlv_length < 4) {
+				zlog_err("TLV length %d not long enough",
+				tlv_length);
 				return bgp_attr_malformed(args,
 							BGP_NOTIFY_UPDATE_OPT_ATTR_ERR,
 							args->total);
 			}
-			tunneltype = stream_getw(BGP_INPUT(peer));
-			subtlv_length = stream_getw(BGP_INPUT(peer));
-			length -= 4;
-
-			if (subtlv_length != length) {
-				zlog_info("%s: subtlv_length(%d) != length(%d)",
-					__func__, subtlv_length, length);
-			}
 		}
 		struct bgp_attr_encap_subtlv *stlv_first = NULL;
 		struct bgp_attr_encap_subtlv *stlv_last = NULL;
-		uint16_t saved_length = length;
-		while (length >= 2) {
+		uint16_t saved_length = tlv_length;
+		while (tlv_length >= 2) {
 			uint16_t subtype = 0;
 			uint16_t sublength = 0;
 			struct bgp_attr_encap_subtlv *tlv;
@@ -3147,14 +3141,14 @@ static int bgp_attr_encap(struct bgp_attr_parser_args *args, struct bgp_attr_enc
 				subtype = stream_getc(BGP_INPUT(peer));
 				if (subtype < 128) {
 					sublength = stream_getc(BGP_INPUT(peer));
-					length -= 2;
+					tlv_length -= 2;
 				} else if (length >= 3) {
 					sublength = stream_getw(BGP_INPUT(peer));
-					length -= 3;
+					tlv_length -= 3;
 				}
 				else {
-					zlog_err(
-						"Tunnel Encap attribute sub-tlv not long enough to contain sub-tlv type and length");
+					zlog_err("TEA sub-tlv length %d not long enough",
+						 sublength);
 					// TODO: free subtlvs, tlvs 
 					return bgp_attr_malformed(args,
 								BGP_NOTIFY_UPDATE_OPT_ATTR_ERR,
@@ -3175,16 +3169,16 @@ static int bgp_attr_encap(struct bgp_attr_parser_args *args, struct bgp_attr_enc
 	#endif
 			}
 
-			if (sublength > length) {
-				zlog_err("Tunnel Encap attribute sub-tlv length %d exceeds remaining length %d",
-					sublength, length);
+			if (sublength > tlv_length) {
+				zlog_err("TEA sub-tlv length %d exceeds remaining length %d",
+					sublength, tlv_length);
 				return bgp_attr_malformed(args,
 							BGP_NOTIFY_UPDATE_OPT_ATTR_ERR,
 							args->total);
 			}
 
 			if (STREAM_READABLE(BGP_INPUT(peer)) < sublength) {
-				zlog_err("Tunnel Encap attribute sub-tlv length %d exceeds remaining stream length %zu",
+				zlog_err("TEA sub-tlv length %d exceeds readable stream length %zu",
 					sublength, STREAM_READABLE(BGP_INPUT(peer)));
 				return bgp_attr_malformed(args,
 							BGP_NOTIFY_UPDATE_OPT_ATTR_ERR,
@@ -3198,7 +3192,7 @@ static int bgp_attr_encap(struct bgp_attr_parser_args *args, struct bgp_attr_enc
 			tlv->type = subtype;
 			tlv->length = sublength;
 			stream_get(tlv->value, peer->curr, sublength);
-			length -= sublength;
+			tlv_length -= sublength;
 
 			/* attach tlv to encap chain */
 			if (stlv_first == NULL) {
@@ -3209,7 +3203,9 @@ static int bgp_attr_encap(struct bgp_attr_parser_args *args, struct bgp_attr_enc
 				stlv_last = tlv;
 			}
 		}
-		tlv_length = saved_length - length;
+		tlv_length = saved_length - tlv_length;
+		length -= tlv_length;
+		
 		struct bgp_attr_encap_tlv *add = XCALLOC(MTYPE_ENCAP_TLV,
 					    sizeof(struct bgp_attr_encap_tlv) + tlv_length);
 		add->tunnel_type = tunneltype;

@@ -22221,6 +22221,10 @@ void bgp_vty_init(void)
 	install_element(BGP_FLOWSPECV4_NODE, &no_neighbor_route_map_cmd);
 	install_element(BGP_FLOWSPECV6_NODE, &neighbor_route_map_cmd);
 	install_element(BGP_FLOWSPECV6_NODE, &no_neighbor_route_map_cmd);
+	install_element(BGP_MPTEV4_NODE, &neighbor_route_map_cmd);
+	install_element(BGP_MPTEV4_NODE, &no_neighbor_route_map_cmd);
+	install_element(BGP_MPTEV6_NODE, &neighbor_route_map_cmd);
+	install_element(BGP_MPTEV6_NODE, &no_neighbor_route_map_cmd);
 	install_element(BGP_EVPN_NODE, &neighbor_route_map_cmd);
 	install_element(BGP_EVPN_NODE, &no_neighbor_route_map_cmd);
 

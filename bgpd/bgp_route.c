@@ -12670,7 +12670,22 @@ void route_vty_out_detail(struct vty *vty, struct bgp *bgp, struct bgp_dest *bn,
 			}
 		}
 	}
-
+        if (CHECK_FLAG(attr->flag, BGP_ATTR_ENCAP)) {
+            vty_out(vty, "       Tunnel Encapsulate Attribute:\n");
+            for (struct bgp_attr_encap_tlv *tunnel_tlv = attr->encap_tlvs;
+                 tunnel_tlv; tunnel_tlv = tunnel_tlv->next) {
+                vty_out(vty, "         tunnel type %d:\n", tunnel_tlv->tunnel_type);
+                for (struct bgp_attr_encap_subtlv *subtlv = tunnel_tlv->encap_subtlvs;
+                     subtlv; subtlv = subtlv->next) {
+                    vty_out(vty, "          subtlv type %d value 0x", subtlv->type);
+                    for (int i = 0; i < subtlv->length; i++) {
+                        vty_out(vty, "%x", subtlv->value[i]);
+                    }
+                    vty_out(vty, "\n");
+                }
+            }
+        }
+        
 	/* Output some debug about internal state of the dest flags */
 	if (json_paths) {
 		if (CHECK_FLAG(bn->flags, BGP_NODE_PROCESS_SCHEDULED))
