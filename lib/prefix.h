@@ -134,9 +134,6 @@ struct mpte_v4_junction_state {
 	uint32_t dag_id;
 	in_addr_t node_addr;
 	in_addr_t origin_addr;
-	uint32_t junction_bw;
-	uint32_t version;
-	uint16_t tunnel_type;
 };
 struct mpte_addr {
 	uint8_t route_type;
@@ -321,6 +318,7 @@ union prefixptr {
 	uniontype(prefixptr, struct prefix_ipv4, p4)
 	uniontype(prefixptr, struct prefix_ipv6, p6)
 	uniontype(prefixptr, struct prefix_evpn, evp)
+	uniontype(prefixptr, struct prefix_mpte, mpt)
 	uniontype(prefixptr, struct prefix_fs,   fs)
 	uniontype(prefixptr, struct prefix_rd,   rd)
 } TRANSPARENT_UNION;
@@ -330,6 +328,7 @@ union prefixconstptr {
 	uniontype(prefixconstptr, const struct prefix_ipv4, p4)
 	uniontype(prefixconstptr, const struct prefix_ipv6, p6)
 	uniontype(prefixconstptr, const struct prefix_evpn, evp)
+	uniontype(prefixconstptr, const struct prefix_mpte, mpt)
 	uniontype(prefixconstptr, const struct prefix_fs,   fs)
 	uniontype(prefixconstptr, const struct prefix_rd,   rd)
 } TRANSPARENT_UNION;

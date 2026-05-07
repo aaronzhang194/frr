@@ -335,6 +335,9 @@ void prefix_copy(union prefixptr udest, union prefixconstptr usrc)
 	} else if (src->family == AF_EVPN) {
 		memcpy(&dest->u.prefix_evpn, &src->u.prefix_evpn,
 		       sizeof(struct evpn_addr));
+	} else if (src->family == AF_MPTE) {
+		memcpy(&dest->u.prefix_mpte, &src->u.prefix_mpte,
+		       sizeof(struct mpte_addr));
 	} else if (src->family == AF_UNSPEC) {
 		dest->u.lp.id = src->u.lp.id;
 		dest->u.lp.adv_router = src->u.lp.adv_router;
@@ -360,7 +363,8 @@ void prefix_copy(union prefixptr udest, union prefixconstptr usrc)
 	}
 }
 
-bool evpn_addr_same(const struct evpn_addr *e1, const struct evpn_addr *e2)
+bool evpn_addr_same
+(const struct evpn_addr *e1, const struct evpn_addr *e2)
 {
 	if (e1->route_type != e2->route_type)
 		return false;
@@ -429,6 +433,11 @@ int prefix_same(union prefixconstptr up1, union prefixconstptr up2)
 		if (p1->family == AF_EVPN)
 			if (evpn_addr_same(&p1->u.prefix_evpn, &p2->u.prefix_evpn))
 				return 1;
+                if (p1->family == AF_MPTE) {
+                    return !memcmp(&p1->u.prefix_mpte, &p2->u.prefix_mpte,
+                                   sizeof(struct mpte_addr));
+
+                }
 		if (p1->family == AF_FLOWSPEC) {
 			if (p1->u.prefix_flowspec.family !=
 			    p2->u.prefix_flowspec.family)
@@ -489,12 +498,17 @@ int prefix_cmp(union prefixconstptr up1, union prefixconstptr up2)
 				return numcmp(pp1[offset], pp2[offset]);
 		return 0;
 	}
+        
 	pp1 = p1->u.val;
 	pp2 = p2->u.val;
 
 	if (p1->prefixlen != p2->prefixlen)
 		return numcmp(p1->prefixlen, p2->prefixlen);
-	offset = p1->prefixlen / PNBBY;
+//	if (p1->family == AF_MPTE) {
+//            return memcmp(p1->u.val, p2->u.val, p1->prefixlen);
+//        }
+
+        offset = p1->prefixlen / PNBBY;
 	shift = p1->prefixlen % PNBBY;
 
 	i = memcmp(pp1, pp2, offset);
@@ -1077,6 +1091,25 @@ static const char *prefixevpn2str(const struct prefix_evpn *p, char *str,
 	return str;
 }
 
+static const char *prefixmpte2str(const struct prefix_mpte *p, char *str,
+					 int size)
+{
+    	char buf[INET_ADDRSTRLEN];
+    	char buf1[INET_ADDRSTRLEN];
+    	char buf2[INET_ADDRSTRLEN];
+
+	snprintf(str, size, "%d:%s:%d:%s:%s", p->prefix.route_type,
+		 inet_ntop(AF_INET, &p->prefix.js_addr.mc_addr,
+                           buf, sizeof(buf)),
+                 p->prefix.js_addr.dag_id,
+		 inet_ntop(AF_INET, &p->prefix.js_addr.node_addr,
+                           buf1, sizeof(buf1)),
+		 inet_ntop(AF_INET, &p->prefix.js_addr.origin_addr,
+                           buf2, sizeof(buf2)));
+        
+	return str;
+}
+
 const char *prefix2str(union prefixconstptr pu, char *str, int size)
 {
 	const struct prefix *p = pu.p;
@@ -1120,7 +1153,11 @@ const char *prefix2str(union prefixconstptr pu, char *str, int size)
 	case AF_FLOWSPEC:
 		strlcpy(str, "FS prefix", size);
 		break;
-
+                
+        case AF_MPTE:
+                prefixmpte2str((const struct prefix_mpte *)p, str, size);
+                break;
+            
 	default:
 		strlcpy(str, "UNK prefix", size);
 		break;

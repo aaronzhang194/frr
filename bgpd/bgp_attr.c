@@ -5677,6 +5677,7 @@ void bgp_attr_init(void)
 	cluster_init();
 	transit_init();
 	encap_init();
+	encap_tlv_init();
 	srv6_init();
 	evpn_overlay_init();
 	nhc_init();

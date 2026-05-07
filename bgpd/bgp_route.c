@@ -12679,7 +12679,7 @@ void route_vty_out_detail(struct vty *vty, struct bgp *bgp, struct bgp_dest *bn,
                      subtlv; subtlv = subtlv->next) {
                     vty_out(vty, "          subtlv type %d value 0x", subtlv->type);
                     for (int i = 0; i < subtlv->length; i++) {
-                        vty_out(vty, "%x", subtlv->value[i]);
+                        vty_out(vty, "%02x", subtlv->value[i]);
                     }
                     vty_out(vty, "\n");
                 }
